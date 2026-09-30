@@ -1,9 +1,9 @@
 """Chat rules: the client and the operators who assigned episodes talk; admins read along;
 other operators see nothing. Plus unread counts and the floating chat list."""
+
 import pytest
 
 from app.chat_rules import chat_access
-
 
 # ---------------------------------------------------------------- the rule table itself
 
@@ -57,7 +57,8 @@ def test_client_and_the_assigning_operator_talk(client, team, login_as, running)
     assert first.status_code == second.status_code == 201
     assert first.json()["body"] == "Please prefer arm robots"
     assert first.json()["author_name"] == "Acme"  # a client shows as their organisation
-    assert [m["body"] for m in read(client, owner, running).json()] == ["Please prefer arm robots", "Will do."]
+    thread = [m["body"] for m in read(client, owner, running).json()]
+    assert thread == ["Please prefer arm robots", "Will do."]
 
 
 def test_the_first_assigner_becomes_the_operator_of_the_request(client, team, login_as, running):
@@ -207,5 +208,6 @@ def test_chat_list_puts_unread_first_and_shows_the_last_message(
 
     listed = chats(client, staff)
     assert [c["request_id"] for c in listed] == [running, quiet]
-    assert (listed[0]["unread"], listed[0]["last_body"], listed[0]["last_author"]) == (1, "Hello, any update?", "Acme")
+    first = listed[0]
+    assert (first["unread"], first["last_body"], first["last_author"]) == (1, "Hello, any update?", "Acme")
     assert listed[1]["unread"] == 0

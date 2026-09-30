@@ -1,4 +1,5 @@
 """Assignment rules: which episodes may go to which request, and when."""
+
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -25,9 +26,7 @@ def assignment_count() -> int:
 # ---------------------------------------------------------------- who may assign
 
 
-def test_operator_assigns_good_and_usable_episodes(
-    client, users, login_as, make_request, make_episodes
-):
+def test_operator_assigns_good_and_usable_episodes(client, users, login_as, make_request, make_episodes):
     request_id = make_request()
     ids = make_episodes(1, "good") + make_episodes(1, "usable")
 
@@ -77,9 +76,7 @@ def test_all_or_nothing_one_bad_episode_stops_the_whole_batch(
     assert assignment_count() == 0  # the two good ones were NOT assigned either
 
 
-def test_an_episode_cannot_go_to_two_requests(
-    client, users, login_as, make_request, make_episodes
-):
+def test_an_episode_cannot_go_to_two_requests(client, users, login_as, make_request, make_episodes):
     staff = login_as(users["operator"])
     first, second = make_request(), make_request(owner="client_b")
     episode = make_episodes(1)
@@ -144,9 +141,7 @@ def test_episodes_can_only_be_assigned_while_in_progress(
 # ---------------------------------------------------------------- taking episodes back
 
 
-def test_unassign_frees_the_episode_for_another_request(
-    client, users, login_as, make_request, make_episodes
-):
+def test_unassign_frees_the_episode_for_another_request(client, users, login_as, make_request, make_episodes):
     staff = login_as(users["operator"])
     first, second = make_request(), make_request(owner="client_b")
     (episode,) = make_episodes(1)
@@ -159,9 +154,7 @@ def test_unassign_frees_the_episode_for_another_request(
     assert assign(client, staff, second, [episode]).status_code == 200
 
 
-def test_cannot_unassign_after_delivery(
-    client, users, login_as, make_request, make_episodes, set_status
-):
+def test_cannot_unassign_after_delivery(client, users, login_as, make_request, make_episodes, set_status):
     staff = login_as(users["operator"])
     request_id = make_request(episodes_requested=1)
     (episode,) = make_episodes(1)
@@ -173,9 +166,7 @@ def test_cannot_unassign_after_delivery(
     assert assignment_count() == 1
 
 
-def test_unassigning_something_not_assigned_is_404(
-    client, users, login_as, make_request, make_episodes
-):
+def test_unassigning_something_not_assigned_is_404(client, users, login_as, make_request, make_episodes):
     (episode,) = make_episodes(1)
     response = client.delete(
         f"/requests/{make_request()}/assignments/{episode}", headers=login_as(users["operator"])
@@ -196,9 +187,7 @@ def test_clients_cannot_unassign(client, users, login_as, make_request, make_epi
 # ---------------------------------------------------------------- the database is the last guard
 
 
-def test_database_itself_refuses_a_second_assignment_of_one_episode(
-    users, make_request, make_episodes
-):
+def test_database_itself_refuses_a_second_assignment_of_one_episode(users, make_request, make_episodes):
     """Even code that skips our checks cannot break 'one episode, one request'."""
     first, second = make_request(), make_request(owner="client_b")
     (episode,) = make_episodes(1)
@@ -221,7 +210,7 @@ def test_two_operators_racing_for_one_episode_exactly_one_wins(
     for round_number in range(1, 9):  # a race is not always lost the same way: repeat it
         (episode,) = make_episodes(1)  # a FRESH episode each round, so every round is a real race
 
-        def attempt(args):
+        def attempt(args, episode=episode):  # bind THIS round's episode explicitly
             request_id, header = args
             return assign(TestClient(app), header, request_id, [episode]).status_code
 
@@ -269,9 +258,7 @@ def test_episode_list_filters_by_task_and_quality(client, users, login_as, make_
     assert {i["quality"] for i in good_cups["items"]} == {"good"}
 
 
-def test_episode_list_can_show_only_free_episodes(
-    client, users, login_as, make_request, make_episodes
-):
+def test_episode_list_can_show_only_free_episodes(client, users, login_as, make_request, make_episodes):
     staff = login_as(users["operator"])
     request_id = make_request()
     given, free = make_episodes(1), make_episodes(2)

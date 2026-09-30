@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
 import jwt
@@ -26,7 +26,7 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 def create_access_token(user_id: int) -> str:
     """The 'wristband': who the user is (sub), when it was made (iat), when it expires (exp)."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": str(user_id),
         "iat": now,
@@ -39,9 +39,7 @@ def decode_access_token(token: str) -> int | None:
     """Return the user id if the wristband is genuine and not expired, else None."""
     try:
         # We always say which algorithm is allowed. Never trust the token to choose.
-        payload = jwt.decode(
-            token, settings.jwt_secret, algorithms=[ALGORITHM], leeway=CLOCK_SKEW_SECONDS
-        )
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[ALGORITHM], leeway=CLOCK_SKEW_SECONDS)
         return int(payload["sub"])
     except (jwt.PyJWTError, KeyError, ValueError):
         return None

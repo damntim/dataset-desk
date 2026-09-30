@@ -1,7 +1,8 @@
 """Create the demo users from seed/users.json. Safe to run many times.
 
-    python -m app.seed
+python -m app.seed
 """
+
 import json
 from pathlib import Path
 

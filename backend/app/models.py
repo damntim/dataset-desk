@@ -40,9 +40,7 @@ class User(Base):
     organisation: Mapped[str | None] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(20))
     is_active: Mapped[bool] = mapped_column(default=True, server_default=text("true"))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Episode(Base):
@@ -56,8 +54,7 @@ class Episode(Base):
         # For "top tasks by good episodes in a date range": the index alone holds everything
         # the query needs (quality, recorded_at, task_name), so PostgreSQL never opens the
         # table. Measured with 200k rows: 17 ms -> 5.6 ms for a 30-day range.
-        Index("ix_episodes_quality_recorded_at", "quality", "recorded_at",
-              postgresql_include=["task_name"]),
+        Index("ix_episodes_quality_recorded_at", "quality", "recorded_at", postgresql_include=["task_name"]),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -85,15 +82,11 @@ class DatasetRequest(Base):
     episodes_requested: Mapped[int]
     deadline: Mapped[date] = mapped_column(Date)
     notes: Mapped[str | None] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(
-        String(20), default="submitted", server_default="submitted"
-    )
+    status: Mapped[str] = mapped_column(String(20), default="submitted", server_default="submitted")
     # The operator of this request: whoever FIRST assigned episodes to it (kept even if
     # those episodes are swapped later). Empty until then. Used for the chat rules.
     operator_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class RequestStatusHistory(Base):
@@ -106,9 +99,7 @@ class RequestStatusHistory(Base):
     from_status: Mapped[str | None] = mapped_column(String(20))  # empty for the first row
     to_status: Mapped[str] = mapped_column(String(20))
     changed_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    changed_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Assignment(Base):
@@ -124,12 +115,8 @@ class Assignment(Base):
     # UNIQUE: an episode can belong to at most ONE request. The database enforces it.
     episode_id: Mapped[int] = mapped_column(ForeignKey("episodes.id"), unique=True)
     assigned_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    assigned_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    review_status: Mapped[str] = mapped_column(
-        String(10), default="pending", server_default="pending"
-    )
+    assigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    review_status: Mapped[str] = mapped_column(String(10), default="pending", server_default="pending")
     review_note: Mapped[str | None] = mapped_column(Text)  # why the client rejected it
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -154,6 +141,4 @@ class RequestMessage(Base):
     request_id: Mapped[int] = mapped_column(ForeignKey("requests.id"), index=True)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     body: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

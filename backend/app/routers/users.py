@@ -1,4 +1,5 @@
 """User management: admin only."""
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -41,7 +42,7 @@ def create_user(
         # The UNIQUE constraint on email is the real guard, even if two admins
         # create the same email at the same second.
         db.rollback()
-        raise HTTPException(status_code=409, detail="A user with this email already exists")
+        raise HTTPException(status_code=409, detail="A user with this email already exists") from None
     db.refresh(user)
     return user
 

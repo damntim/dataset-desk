@@ -1,5 +1,6 @@
 """Chat on a request, between its client and the operators who assigned its episodes.
 Who may read and write: see app/chat_rules.py."""
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import exists, func, or_, select
 from sqlalchemy.dialects.postgresql import distinct_on, insert
@@ -21,11 +22,14 @@ def _access(db: Session, request_id: int, user: User) -> tuple[bool, bool]:
     if request is None or (user.role == "client" and request.client_id != user.id):
         raise HTTPException(status_code=404, detail="Request not found")
     assigned_here = request.operator_id == user.id or db.scalar(
-        select(
-            exists().where(Assignment.request_id == request_id, Assignment.assigned_by == user.id)
-        )
+        select(exists().where(Assignment.request_id == request_id, Assignment.assigned_by == user.id))
     )
     return chat_access(user.role, user.id, request.client_id, bool(assigned_here))
+
+
+def _display_name(user: User) -> str:
+    """A client shows as their organisation; staff show as their own name."""
+    return user.organisation if user.role == "client" and user.organisation else user.name
 
 
 def _messages(db: Session, request_id: int, after_id: int = 0) -> list[MessageOut]:
@@ -40,7 +44,7 @@ def _messages(db: Session, request_id: int, after_id: int = 0) -> list[MessageOu
         MessageOut(
             id=m.id,
             author_id=m.author_id,
-            author_name=author.organisation if author.role == "client" and author.organisation else author.name,
+            author_name=_display_name(author),
             author_role=author.role,
             body=m.body,
             created_at=m.created_at,
@@ -58,7 +62,10 @@ def list_messages(
 ):
     can_read, _ = _access(db, request_id, user)
     if not can_read:
-        raise HTTPException(status_code=403, detail="Only the operators who assigned episodes to this request can see its chat")
+        raise HTTPException(
+            status_code=403,
+            detail="Only the operators who assigned episodes to this request can see its chat",
+        )
     return _messages(db, request_id, after_id)
 
 
@@ -71,7 +78,10 @@ def send_message(
 ):
     _, can_write = _access(db, request_id, user)
     if not can_write:
-        raise HTTPException(status_code=403, detail="You can read this chat but only the client and the operators on this request can reply")
+        raise HTTPException(
+            status_code=403,
+            detail="You can read this chat, but only the client and the operators on this request can reply",
+        )
     message = RequestMessage(request_id=request_id, author_id=user.id, body=body.body)
     db.add(message)
     db.flush()
@@ -115,13 +125,20 @@ def my_chats(
     if user.role == "client":
         query = query.where(DatasetRequest.client_id == user.id)
     elif user.role == "operator":
-        mine = select(Assignment.id).where(
-            Assignment.request_id == DatasetRequest.id, Assignment.assigned_by == user.id
-        ).correlate(DatasetRequest).exists()
+        mine = (
+            select(Assignment.id)
+            .where(Assignment.request_id == DatasetRequest.id, Assignment.assigned_by == user.id)
+            .correlate(DatasetRequest)
+            .exists()
+        )
         query = query.where(or_(DatasetRequest.operator_id == user.id, mine))
     rows = [request_out(row, user) for row in db.execute(query.limit(200)).all()]
     # Admins see every chat, but only the ones that have messages (or that they run).
-    rows = [r for r in rows if r["can_read_chat"] and (user.role != "admin" or r["message_count"] or r["can_write_chat"])]
+    rows = [
+        r
+        for r in rows
+        if r["can_read_chat"] and (user.role != "admin" or r["message_count"] or r["can_write_chat"])
+    ]
 
     # The last message of each conversation, in one query.
     last = {}
@@ -148,7 +165,7 @@ def my_chats(
                 can_write=r["can_write_chat"],
                 unread=r["unread_messages"],
                 last_body=message.body[:120] if message else None,
-                last_author=(author.organisation or author.name) if author and author.role == "client" else (author.name if author else None),
+                last_author=_display_name(author) if author else None,
                 last_at=message.created_at if message else None,
             )
         )

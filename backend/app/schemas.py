@@ -1,4 +1,5 @@
 """Shapes of the data that goes IN and OUT of the API (the 'order forms')."""
+
 from datetime import date, datetime
 from typing import Literal
 

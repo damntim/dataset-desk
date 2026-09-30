@@ -1,7 +1,6 @@
 """Authorization: only admins manage users (403 for everyone else)."""
-import pytest
 
-from tests.conftest import PASSWORD
+import pytest
 
 NEW_USER = {
     "email": "New.Person@Test.com",
@@ -70,9 +69,7 @@ def test_duplicate_email_is_409_even_with_different_capitals(client, users, logi
     ],
 )
 def test_invalid_user_data_is_422(client, users, login_as, change):
-    response = client.post(
-        "/users", json={**NEW_USER, **change}, headers=login_as(users["admin"])
-    )
+    response = client.post("/users", json={**NEW_USER, **change}, headers=login_as(users["admin"]))
     assert response.status_code == 422
 
 
@@ -91,9 +88,7 @@ def test_admin_cannot_demote_or_deactivate_themselves(client, users, login_as):
     headers = login_as(users["admin"])
     me = users["admin"].id
     assert client.patch(f"/users/{me}", json={"role": "client"}, headers=headers).status_code == 400
-    assert (
-        client.patch(f"/users/{me}", json={"is_active": False}, headers=headers).status_code == 400
-    )
+    assert client.patch(f"/users/{me}", json={"is_active": False}, headers=headers).status_code == 400
 
 
 def test_patching_a_missing_user_is_404(client, users, login_as):

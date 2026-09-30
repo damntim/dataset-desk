@@ -7,6 +7,7 @@ Two steps, kept apart so each is easy to read and test:
 
 Command line:   python -m app.importer path/to/episodes.csv
 """
+
 import csv
 import io
 import json
@@ -14,7 +15,7 @@ import re
 import sys
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 
@@ -90,8 +91,8 @@ def parse_datetime(value: str) -> datetime | None:
             return None
     try:
         if parsed.tzinfo is None:
-            return parsed.replace(tzinfo=timezone.utc)
-        return parsed.astimezone(timezone.utc)
+            return parsed.replace(tzinfo=UTC)
+        return parsed.astimezone(UTC)
     except (ValueError, OverflowError):
         return None
 
@@ -117,8 +118,11 @@ def clean_row(row: dict[str, str]) -> tuple[dict, list[Issue]]:
         issues.append(("missing_episode_id", "episode_id is empty"))
     elif not ID_PATTERN.match(episode_id):
         issues.append(
-            ("invalid_episode_id", f"episode_id is {_shown(row['episode_id'])}; "
-             "use letters, digits, '-' or '_' (max 50 characters)")
+            (
+                "invalid_episode_id",
+                f"episode_id is {_shown(row['episode_id'])}; "
+                "use letters, digits, '-' or '_' (max 50 characters)",
+            )
         )
 
     robot_id = row["robot_id"].strip().lower()
@@ -136,15 +140,19 @@ def clean_row(row: dict[str, str]) -> tuple[dict, list[Issue]]:
     recorded_at = parse_datetime(row["recorded_at"])
     if recorded_at is None:
         issues.append(
-            ("invalid_date", f"recorded_at is {_shown(row['recorded_at'])}; expected an ISO "
-             "date-time or DD/MM/YYYY HH:MM")
+            (
+                "invalid_date",
+                f"recorded_at is {_shown(row['recorded_at'])}; expected an ISO date-time or DD/MM/YYYY HH:MM",
+            )
         )
 
     duration = parse_duration(row["duration_seconds"])
     if duration is None:
         issues.append(
-            ("invalid_duration", f"duration_seconds is {_shown(row['duration_seconds'])}; "
-             "it must be a positive number")
+            (
+                "invalid_duration",
+                f"duration_seconds is {_shown(row['duration_seconds'])}; it must be a positive number",
+            )
         )
 
     operator_name = " ".join(row["operator_name"].split()) or None  # empty is allowed
@@ -242,10 +250,10 @@ def parse_csv(text: str) -> ParseResult:
 
 def _resolve_duplicates(candidates: list[tuple[int, dict]], result: ParseResult) -> None:
     """Same episode_id on several lines:
-      - identical rows      -> keep one, the others are harmless copies;
-      - different values    -> we cannot know which is right, so import NONE of them
-                               and report every line. Someone fixes the file and imports again
-                               (safe, because the import is idempotent)."""
+    - identical rows      -> keep one, the others are harmless copies;
+    - different values    -> we cannot know which is right, so import NONE of them
+                             and report every line. Someone fixes the file and imports again
+                             (safe, because the import is idempotent)."""
     groups: dict[str, list[tuple[int, dict]]] = {}
     for line, values in candidates:
         groups.setdefault(values["episode_id"], []).append((line, values))
@@ -311,8 +319,7 @@ def import_episodes(db: Session, text: str) -> dict:
         "skipped_by_reason": dict(Counter(code for s in parsed.skipped for code, _ in s.issues)),
         "skipped_details": skipped_details[:MAX_DETAILS],
         "already_existed_details": already_existed[:MAX_DETAILS],
-        "details_truncated": len(skipped_details) > MAX_DETAILS
-        or len(already_existed) > MAX_DETAILS,
+        "details_truncated": len(skipped_details) > MAX_DETAILS or len(already_existed) > MAX_DETAILS,
     }
 
 

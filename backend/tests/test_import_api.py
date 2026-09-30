@@ -1,4 +1,5 @@
 """The import endpoint: who may use it, and that running it twice changes nothing."""
+
 from pathlib import Path
 
 import pytest
@@ -12,9 +13,7 @@ from tests.test_import_parsing import GOOD, HEADER, csv_of
 
 def upload(client, headers, text: str | bytes, name="episodes.csv"):
     data = text.encode("utf-8") if isinstance(text, str) else text
-    return client.post(
-        "/episodes/import", files={"file": (name, data, "text/csv")}, headers=headers
-    )
+    return client.post("/episodes/import", files={"file": (name, data, "text/csv")}, headers=headers)
 
 
 def episode_count() -> int:
@@ -196,5 +195,6 @@ def test_real_seed_file_gives_the_expected_report_and_is_repeatable(client, user
     assert "EP-00003" not in by_id and "EP-00011" not in by_id  # conflicting: neither imported
     assert by_id["EP-00014"].recorded_at.day == 14  # was "14/08/2026 09:15"
     assert by_id["EP-00018"].duration_seconds in (45, 46)  # was 45.5
-    assert all(e.robot_id in {"arm-01", "arm-02", "arm-03", "mobile-01", "humanoid-01"}
-               for e in by_id.values())
+    assert all(
+        e.robot_id in {"arm-01", "arm-02", "arm-03", "mobile-01", "humanoid-01"} for e in by_id.values()
+    )

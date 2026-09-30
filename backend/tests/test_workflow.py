@@ -1,4 +1,5 @@
 """The transition table itself: pure rules, no database, no web."""
+
 from app.workflow import TRANSITIONS, next_statuses
 
 ALL = ["submitted", "in_progress", "delivered", "accepted", "rejected"]

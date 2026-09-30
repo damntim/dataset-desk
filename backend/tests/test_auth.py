@@ -1,5 +1,6 @@
 """Login and token rules: who gets in, and who is refused (401)."""
-from datetime import datetime, timedelta, timezone
+
+from datetime import UTC, datetime, timedelta
 
 import jwt
 
@@ -7,11 +8,9 @@ from app.config import settings
 from tests.conftest import PASSWORD
 
 
-def make_token(
-    user_id: int, *, secret=settings.jwt_secret, minutes=60, algorithm="HS256", issued_in=0
-):
+def make_token(user_id: int, *, secret=settings.jwt_secret, minutes=60, algorithm="HS256", issued_in=0):
     """issued_in: seconds from now that the token claims it was issued (negative = past)."""
-    issued = datetime.now(timezone.utc) + timedelta(seconds=issued_in)
+    issued = datetime.now(UTC) + timedelta(seconds=issued_in)
     payload = {"sub": str(user_id), "iat": issued, "exp": issued + timedelta(minutes=minutes)}
     return jwt.encode(payload, secret, algorithm=algorithm)
 
@@ -21,9 +20,7 @@ def bearer(token: str) -> dict:
 
 
 def test_login_returns_token_and_user_without_password_hash(client, users):
-    response = client.post(
-        "/auth/login", json={"email": "client-a@test.com", "password": PASSWORD}
-    )
+    response = client.post("/auth/login", json={"email": "client-a@test.com", "password": PASSWORD})
     assert response.status_code == 200
     body = response.json()
     assert body["access_token"]
@@ -32,20 +29,14 @@ def test_login_returns_token_and_user_without_password_hash(client, users):
 
 
 def test_login_email_is_not_case_sensitive(client, users):
-    response = client.post(
-        "/auth/login", json={"email": "  Client-A@TEST.com ", "password": PASSWORD}
-    )
+    response = client.post("/auth/login", json={"email": "  Client-A@TEST.com ", "password": PASSWORD})
     assert response.status_code == 200
 
 
 def test_wrong_password_and_unknown_email_give_the_same_answer(client, users):
     """The message must not reveal whether an email is registered."""
-    wrong_password = client.post(
-        "/auth/login", json={"email": "client-a@test.com", "password": "wrong"}
-    )
-    unknown_email = client.post(
-        "/auth/login", json={"email": "ghost@test.com", "password": "wrong"}
-    )
+    wrong_password = client.post("/auth/login", json={"email": "client-a@test.com", "password": "wrong"})
+    unknown_email = client.post("/auth/login", json={"email": "ghost@test.com", "password": "wrong"})
     assert wrong_password.status_code == unknown_email.status_code == 401
     assert wrong_password.json() == unknown_email.json()
 
@@ -94,14 +85,10 @@ def test_valid_token_returns_the_right_user(client, users, login_as):
     assert response.json()["email"] == "operator@test.com"
 
 
-def test_token_of_a_deactivated_user_stops_working_immediately(
-    client, users, login_as
-):
+def test_token_of_a_deactivated_user_stops_working_immediately(client, users, login_as):
     headers = login_as(users["admin"])
     other = login_as(users["client_a"])
     assert client.get("/auth/me", headers=other).status_code == 200
 
-    client.patch(
-        f"/users/{users['client_a'].id}", json={"is_active": False}, headers=headers
-    )
+    client.patch(f"/users/{users['client_a'].id}", json={"is_active": False}, headers=headers)
     assert client.get("/auth/me", headers=other).status_code == 401

@@ -2,9 +2,10 @@
 
 Tests use a SEPARATE database called desk_test, so they can never touch real data.
 """
+
 import itertools
 import os
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -13,13 +14,9 @@ from sqlalchemy.engine import make_url
 
 # 1) Point the app at the TEST database. This must happen BEFORE the app is imported,
 #    because the app reads DATABASE_URL once, when it starts.
-_dev_url = make_url(
-    os.environ.get("DATABASE_URL", "postgresql+psycopg://desk:desk@localhost:5432/desk")
-)
+_dev_url = make_url(os.environ.get("DATABASE_URL", "postgresql+psycopg://desk:desk@localhost:5432/desk"))
 TEST_DB_NAME = "desk_test"
-os.environ["DATABASE_URL"] = _dev_url.set(database=TEST_DB_NAME).render_as_string(
-    hide_password=False
-)
+os.environ["DATABASE_URL"] = _dev_url.set(database=TEST_DB_NAME).render_as_string(hide_password=False)
 
 os.environ["BCRYPT_ROUNDS"] = "4"  # the minimum: password hashing is slow on purpose
 
@@ -44,9 +41,7 @@ def _database():
     from scratch using our real migrations (so the migrations get tested too)."""
     admin_engine = create_engine(_dev_url.set(database="postgres"), isolation_level="AUTOCOMMIT")
     with admin_engine.connect() as conn:
-        exists = conn.scalar(
-            text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": TEST_DB_NAME}
-        )
+        exists = conn.scalar(text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": TEST_DB_NAME})
         if not exists:
             conn.execute(text(f"CREATE DATABASE {TEST_DB_NAME}"))
     admin_engine.dispose()
@@ -124,7 +119,7 @@ def make_episodes():
                     episode_id=f"EP-T{next(_episode_numbers):05d}",
                     robot_id="arm-01",
                     task_name=task_name,
-                    recorded_at=datetime(2026, 8, 1, 10, 0, tzinfo=timezone.utc),
+                    recorded_at=datetime(2026, 8, 1, 10, 0, tzinfo=UTC),
                     duration_seconds=30,
                     operator_name="Tester",
                     quality=quality,
@@ -145,10 +140,7 @@ def assign_episodes(make_episodes):
     def _assign(request_id: int, n: int, assigned_by: int) -> None:
         ids = make_episodes(n)
         with SessionLocal() as db:
-            db.add_all(
-                Assignment(request_id=request_id, episode_id=i, assigned_by=assigned_by)
-                for i in ids
-            )
+            db.add_all(Assignment(request_id=request_id, episode_id=i, assigned_by=assigned_by) for i in ids)
             db.commit()
 
     return _assign
@@ -160,9 +152,7 @@ def set_status():
 
     def _set(request_id: int, status: str) -> None:
         with SessionLocal() as db:
-            db.execute(
-                update(DatasetRequest).where(DatasetRequest.id == request_id).values(status=status)
-            )
+            db.execute(update(DatasetRequest).where(DatasetRequest.id == request_id).values(status=status))
             db.commit()
 
     return _set

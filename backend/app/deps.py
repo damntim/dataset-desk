@@ -1,4 +1,5 @@
 """Guards used by endpoints: 'who is this?' and 'are they allowed?'"""
+
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session

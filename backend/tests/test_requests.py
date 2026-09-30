@@ -1,4 +1,5 @@
 """Requests: who can create and see them, and how they move through the workflow."""
+
 from datetime import date, timedelta
 
 import pytest
@@ -112,9 +113,7 @@ def test_list_can_filter_by_status(client, users, login_as, request_id, set_stat
     assert client.get("/requests?status=flying", headers=staff).status_code == 422
 
 
-def test_buttons_shown_depend_on_who_is_looking(
-    client, users, login_as, request_id, set_status
-):
+def test_buttons_shown_depend_on_who_is_looking(client, users, login_as, request_id, set_status):
     set_status(request_id, "delivered")
     as_client = client.get(f"/requests/{request_id}", headers=login_as(users["client_a"])).json()
     as_operator = client.get(f"/requests/{request_id}", headers=login_as(users["operator"])).json()

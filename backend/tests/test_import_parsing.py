@@ -1,5 +1,6 @@
 """Cleaning rules of the CSV import. Pure functions: no database, no web."""
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
 
 import pytest
 
@@ -32,7 +33,7 @@ def test_dirty_but_valid_row_is_cleaned():
         "episode_id": "EP-00003",
         "robot_id": "arm-01",
         "task_name": "pick cup",
-        "recorded_at": datetime(2026, 8, 1, 10, 0, tzinfo=timezone.utc),
+        "recorded_at": datetime(2026, 8, 1, 10, 0, tzinfo=UTC),
         "duration_seconds": 30,
         "operator_name": "Aline",
         "quality": "good",
@@ -52,7 +53,7 @@ def test_dirty_but_valid_row_is_cleaned():
 def test_accepted_date_formats_all_become_the_same_utc_time(text):
     values, codes = only_row(f"EP-1,arm-01,pick cup,{text},30,Aline,good")
     assert codes == []
-    assert values["recorded_at"] == datetime(2026, 8, 14, 9, 20, tzinfo=timezone.utc)
+    assert values["recorded_at"] == datetime(2026, 8, 14, 9, 20, tzinfo=UTC)
 
 
 @pytest.mark.parametrize("text,expected", [("45.5", 46), ("44.5", 45), ("30", 30), ("30.4", 30)])
@@ -116,7 +117,7 @@ def test_a_row_with_several_problems_reports_all_of_them():
 def test_duplicate_with_same_values_is_skipped_and_points_to_the_first():
     result = parse_csv(csv_of(GOOD, GOOD))
     assert len(result.valid) == 1
-    (code, message), = result.skipped[0].issues
+    ((code, message),) = result.skipped[0].issues
     assert code == "duplicate_in_file"
     assert "line 2" in message and "same values" in message
 

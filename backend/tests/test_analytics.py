@@ -1,5 +1,6 @@
 """Analytics: exact numbers we can calculate by hand, boundaries, and access rules."""
-from datetime import date, datetime, timedelta, timezone
+
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from sqlalchemy import event
@@ -7,7 +8,7 @@ from sqlalchemy import event
 from app.db import SessionLocal, engine
 from app.models import DatasetRequest, Episode, RequestStatusHistory
 
-UTC = timezone.utc
+UTC = UTC
 
 
 def at(text: str) -> datetime:
@@ -47,15 +48,21 @@ def add_request(users, created: str, status="submitted", delivered_after: list[t
         db.flush()
         db.add(
             RequestStatusHistory(
-                request_id=request.id, from_status=None, to_status="submitted",
-                changed_by=users["client_a"].id, changed_at=at(created),
+                request_id=request.id,
+                from_status=None,
+                to_status="submitted",
+                changed_by=users["client_a"].id,
+                changed_at=at(created),
             )
         )
         for offset in delivered_after:
             db.add(
                 RequestStatusHistory(
-                    request_id=request.id, from_status="in_progress", to_status="delivered",
-                    changed_by=users["operator"].id, changed_at=at(created) + offset,
+                    request_id=request.id,
+                    from_status="in_progress",
+                    to_status="delivered",
+                    changed_by=users["operator"].id,
+                    changed_at=at(created) + offset,
                 )
             )
         db.commit()
@@ -77,7 +84,8 @@ def staff(login_as, users):
 
 @pytest.mark.parametrize("who", ["operator", "admin"])
 def test_staff_can_read_analytics(client, users, login_as, who):
-    assert client.get("/analytics?from=2026-08-01&to=2026-08-31", headers=login_as(users[who])).status_code == 200
+    response = client.get("/analytics?from=2026-08-01&to=2026-08-31", headers=login_as(users[who]))
+    assert response.status_code == 200
 
 
 def test_clients_cannot_read_analytics(client, users, login_as):
@@ -173,7 +181,11 @@ def test_top_five_tasks_count_only_good_episodes_and_break_ties_alphabetically(c
 
     top = report(client, staff)["top_tasks_by_good_episodes"]
     assert [(t["task_name"], t["good_episodes"]) for t in top] == [
-        ("a", 9), ("b", 8), ("c", 7), ("d", 6), ("e", 5),
+        ("a", 9),
+        ("b", 8),
+        ("c", 7),
+        ("d", 6),
+        ("e", 5),
     ]
 
 
@@ -196,7 +208,11 @@ def test_requests_are_counted_by_status_for_requests_created_in_the_range(client
 
     requests = report(client, staff)["requests"]
     assert requests["by_status"] == {
-        "submitted": 2, "in_progress": 0, "delivered": 0, "accepted": 1, "rejected": 0,
+        "submitted": 2,
+        "in_progress": 0,
+        "delivered": 0,
+        "accepted": 1,
+        "rejected": 0,
     }
     assert requests["total"] == 3
 

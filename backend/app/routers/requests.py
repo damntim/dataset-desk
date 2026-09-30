@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import delete, func, select, update
@@ -178,9 +178,7 @@ def list_requests(
     if status:
         stmt = stmt.where(DatasetRequest.status == status)
     stmt = (
-        stmt.order_by(DatasetRequest.created_at.desc(), DatasetRequest.id.desc())
-        .limit(limit)
-        .offset(offset)
+        stmt.order_by(DatasetRequest.created_at.desc(), DatasetRequest.id.desc()).limit(limit).offset(offset)
     )
     return [request_out(row, user) for row in db.execute(stmt).all()]
 
@@ -197,9 +195,7 @@ def get_request(
 def _lock_visible_request(db: Session, request_id: int, user: User) -> DatasetRequest:
     """Find the request and lock its row until we commit. If two people change the same
     request at the same moment, the second waits, then sees the NEW status."""
-    request = db.scalar(
-        select(DatasetRequest).where(DatasetRequest.id == request_id).with_for_update()
-    )
+    request = db.scalar(select(DatasetRequest).where(DatasetRequest.id == request_id).with_for_update())
     if request is None or (user.role == "client" and request.client_id != user.id):
         raise HTTPException(status_code=404, detail="Request not found")
     return request
@@ -221,8 +217,7 @@ def _check_move(db: Session, request: DatasetRequest, target: str, user: User) -
             raise HTTPException(
                 status_code=409,
                 detail=(
-                    f"Cannot deliver: {assigned} episodes assigned, "
-                    f"{request.episodes_requested} requested"
+                    f"Cannot deliver: {assigned} episodes assigned, {request.episodes_requested} requested"
                 ),
             )
 
@@ -242,7 +237,7 @@ def _review_pending(db: Session, request_id: int, verdict: str, note: str | None
     statement = (
         update(Assignment)
         .where(Assignment.request_id == request_id, Assignment.review_status == "pending")
-        .values(review_status=verdict, review_note=note, reviewed_at=datetime.now(timezone.utc))
+        .values(review_status=verdict, review_note=note, reviewed_at=datetime.now(UTC))
     )
     if only is not None:
         statement = statement.where(Assignment.episode_id.in_(only))
@@ -347,9 +342,7 @@ def review_delivery(
 
     if returned:  # given back: the episodes become free for other requests
         db.execute(
-            delete(Assignment).where(
-                Assignment.request_id == request.id, Assignment.episode_id.in_(returned)
-            )
+            delete(Assignment).where(Assignment.request_id == request.id, Assignment.episode_id.in_(returned))
         )
     if rejected:
         _review_pending(db, request.id, "rejected", body.reason, only=rejected)

@@ -1,5 +1,14 @@
 """Episode-by-episode review of a delivery (the chat is tested in test_chat.py)."""
+
 import pytest
+
+
+def assign(client, headers, request_id, ids):
+    return client.post(f"/requests/{request_id}/assignments", json={"episode_ids": ids}, headers=headers)
+
+
+def deliver(client, headers, request_id):
+    return client.patch(f"/requests/{request_id}/status", json={"status": "delivered"}, headers=headers)
 
 
 @pytest.fixture
@@ -8,8 +17,8 @@ def delivered(client, users, login_as, make_request, make_episodes):
     staff = login_as(users["operator"])
     request_id = make_request(episodes_requested=3)
     ids = make_episodes(3)
-    assert client.post(f"/requests/{request_id}/assignments", json={"episode_ids": ids}, headers=staff).status_code == 200
-    assert client.patch(f"/requests/{request_id}/status", json={"status": "delivered"}, headers=staff).status_code == 200
+    assert assign(client, staff, request_id, ids).status_code == 200
+    assert deliver(client, staff, request_id).status_code == 200
     return request_id, ids
 
 
@@ -48,7 +57,8 @@ def test_rejecting_some_episodes_accepts_the_others_and_sends_it_back(client, us
     assert body["status"] == "rejected"
     assert (body["episodes_assigned"], body["episodes_rejected"]) == (2, 1)
     assert verdicts(client, owner, request_id) == {ids[0]: "rejected", ids[1]: "accepted", ids[2]: "accepted"}
-    rejected = next(e for e in client.get(f"/requests/{request_id}/episodes", headers=owner).json() if e["id"] == ids[0])
+    episodes = client.get(f"/requests/{request_id}/episodes", headers=owner).json()
+    rejected = next(e for e in episodes if e["id"] == ids[0])
     assert rejected["review_note"] == "Robot arm is blurry"
     assert body["history"][-1]["to_status"] == "rejected"
 
@@ -113,7 +123,7 @@ def test_rework_swaps_rejected_episodes_and_keeps_accepted_ones(
     assert client.delete(f"/requests/{request_id}/assignments/{ids[0]}", headers=staff).status_code == 200
     (new,) = make_episodes(1)
     client.post(f"/requests/{request_id}/assignments", json={"episode_ids": [new]}, headers=staff)
-    assert client.patch(f"/requests/{request_id}/status", json={"status": "delivered"}, headers=staff).status_code == 200
+    assert deliver(client, staff, request_id).status_code == 200
 
     # The client only reviews the new episode now; the earlier verdicts stay.
     assert verdicts(client, owner, request_id) == {ids[1]: "accepted", ids[2]: "accepted", new: "pending"}
@@ -144,7 +154,7 @@ def over_delivered(client, users, login_as, make_request, make_episodes):
     request_id = make_request(episodes_requested=2)
     ids = make_episodes(5)
     client.post(f"/requests/{request_id}/assignments", json={"episode_ids": ids}, headers=staff)
-    assert client.patch(f"/requests/{request_id}/status", json={"status": "delivered"}, headers=staff).status_code == 200
+    assert deliver(client, staff, request_id).status_code == 200
     return request_id, ids
 
 

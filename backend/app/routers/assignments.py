@@ -1,4 +1,5 @@
 """Giving episodes to a request (and taking them back)."""
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -23,16 +24,13 @@ def _few(items: list) -> str:
 def _lock_in_progress_request(db: Session, request_id: int) -> DatasetRequest:
     """Find the request and lock it until we commit. Locking means nobody can change its
     status (say, to 'delivered') while we are adding or removing episodes."""
-    request = db.scalar(
-        select(DatasetRequest).where(DatasetRequest.id == request_id).with_for_update()
-    )
+    request = db.scalar(select(DatasetRequest).where(DatasetRequest.id == request_id).with_for_update())
     if request is None:
         raise HTTPException(status_code=404, detail="Request not found")
     if request.status != "in_progress":
         raise HTTPException(
             status_code=409,
-            detail=f"Episodes can only be changed while the request is in_progress "
-            f"(it is {request.status})",
+            detail=f"Episodes can only be changed while the request is in_progress (it is {request.status})",
         )
     return request
 
@@ -71,9 +69,7 @@ def assign_episodes(
             status_code=409, detail=f"Already assigned: {_few(listing)}. Nothing was assigned."
         )
 
-    db.add_all(
-        Assignment(request_id=request.id, episode_id=i, assigned_by=staff.id) for i in ids
-    )
+    db.add_all(Assignment(request_id=request.id, episode_id=i, assigned_by=staff.id) for i in ids)
     if request.operator_id is None:
         request.operator_id = staff.id  # the first person to assign episodes runs this request
     try:
@@ -85,7 +81,7 @@ def assign_episodes(
         raise HTTPException(
             status_code=409,
             detail="One of these episodes was just assigned elsewhere. Nothing was assigned.",
-        )
+        ) from None
     return load_detail(db, request_id, staff)
 
 
@@ -98,9 +94,7 @@ def unassign_episode(
 ):
     _lock_in_progress_request(db, request_id)
     assignment = db.scalar(
-        select(Assignment).where(
-            Assignment.request_id == request_id, Assignment.episode_id == episode_pk
-        )
+        select(Assignment).where(Assignment.request_id == request_id, Assignment.episode_id == episode_pk)
     )
     if assignment is None:
         raise HTTPException(status_code=404, detail="This episode is not assigned to this request")

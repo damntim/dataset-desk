@@ -72,4 +72,4 @@ def import_csv(
     try:
         return import_episodes(db, decode_file(data))
     except ImportFileError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from None

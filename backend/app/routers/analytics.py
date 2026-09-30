@@ -1,6 +1,7 @@
 """Reports. Every number is computed by the database (GROUP BY, percentile_cont),
 so Python only ever receives the small answer, never the millions of rows behind it."""
-from datetime import date, datetime, time, timedelta, timezone
+
+from datetime import UTC, date, datetime, time, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import Date, Float, cast, desc, extract, func, select
@@ -26,8 +27,8 @@ def _range_start_end(date_from: date, date_to: date) -> tuple[datetime, datetime
         end_day = date_to + timedelta(days=1)
     except OverflowError:
         raise HTTPException(status_code=422, detail="'to' is too far in the future") from None
-    start = datetime.combine(date_from, time.min, tzinfo=timezone.utc)
-    end = datetime.combine(end_day, time.min, tzinfo=timezone.utc)
+    start = datetime.combine(date_from, time.min, tzinfo=UTC)
+    end = datetime.combine(end_day, time.min, tzinfo=UTC)
     return start, end
 
 
@@ -92,16 +93,12 @@ def analytics(
     return AnalyticsOut(
         date_from=date_from,
         date_to=date_to,
-        episodes_per_day=[
-            {"day": d, "robot_id": robot, "episodes": n} for d, robot, n in per_day
-        ],
+        episodes_per_day=[{"day": d, "robot_id": robot, "episodes": n} for d, robot, n in per_day],
         requests={
             "by_status": by_status,
             "total": sum(by_status.values()),
             "delivered_count": delivered_count,
             "median_seconds_to_deliver": float(median) if median is not None else None,
         },
-        top_tasks_by_good_episodes=[
-            {"task_name": name, "good_episodes": n} for name, n in top_tasks
-        ],
+        top_tasks_by_good_episodes=[{"task_name": name, "good_episodes": n} for name, n in top_tasks],
     )
