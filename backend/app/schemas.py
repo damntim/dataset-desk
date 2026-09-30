@@ -95,7 +95,14 @@ class RequestOut(BaseModel):
     client_name: str
     task_name: str
     episodes_requested: int
-    episodes_assigned: int
+    episodes_assigned: int  # counts toward delivery (the client's rejected ones are left out)
+    episodes_rejected: int  # rejected by the client, still waiting to be swapped out
+    operator_id: int | None  # first person who assigned episodes (see chat_rules.py)
+    operator_name: str | None
+    can_read_chat: bool
+    can_write_chat: bool
+    message_count: int
+    unread_messages: int
     deadline: date
     notes: str | None
     status: Status
@@ -130,6 +137,71 @@ class EpisodePage(BaseModel):
     total: int  # how many match the filters, across all pages
     limit: int
     offset: int
+
+
+class RequestEpisodeOut(EpisodeOut):
+    """An episode inside a request, with the client's verdict on it."""
+
+    review_status: Literal["pending", "accepted", "rejected"]
+    review_note: str | None
+
+
+class ReviewIn(BaseModel):
+    """The client's review of a delivery, episode by episode. Every episode NOT listed
+    is kept (accepted).
+    - rejected: not good enough -> the request goes back for rework (reason required)
+    - returned: fine, but more than I asked for -> given back, free for other requests
+    - extend: keep ALL the extra episodes by raising my request to match"""
+
+    rejected_episode_ids: list[int] = Field(default_factory=list, max_length=100_000)
+    returned_episode_ids: list[int] = Field(default_factory=list, max_length=100_000)
+    reason: str | None = Field(default=None, max_length=2000)
+    extend: bool = False
+
+    @field_validator("reason")
+    @classmethod
+    def blank_is_none(cls, value: str | None) -> str | None:
+        return value.strip() or None if value else None
+
+
+class MessageIn(BaseModel):
+    body: str = Field(max_length=2000)
+
+    @field_validator("body")
+    @classmethod
+    def not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("message must not be empty")
+        return value
+
+
+class ReadIn(BaseModel):
+    last_read_id: int = Field(ge=0)
+
+
+class ChatSummaryOut(BaseModel):
+    """One conversation in the floating chat list."""
+
+    request_id: int
+    task_name: str
+    client_name: str
+    status: Status
+    operator_name: str | None
+    can_write: bool
+    unread: int
+    last_body: str | None
+    last_author: str | None
+    last_at: datetime | None
+
+
+class MessageOut(BaseModel):
+    id: int
+    author_id: int
+    author_name: str
+    author_role: Role
+    body: str
+    created_at: datetime
 
 
 class AssignIn(BaseModel):

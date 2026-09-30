@@ -16,6 +16,8 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 ROLES = ("client", "operator", "admin")
 QUALITIES = ("good", "usable", "bad")
 STATUSES = ("submitted", "in_progress", "delivered", "accepted", "rejected")
+# The client's verdict on ONE delivered episode. "pending" = not reviewed yet.
+REVIEW_STATUSES = ("pending", "accepted", "rejected")
 
 
 def _one_of(column: str, values: tuple[str, ...]) -> str:
@@ -86,6 +88,9 @@ class DatasetRequest(Base):
     status: Mapped[str] = mapped_column(
         String(20), default="submitted", server_default="submitted"
     )
+    # The operator of this request: whoever FIRST assigned episodes to it (kept even if
+    # those episodes are swapped later). Empty until then. Used for the chat rules.
+    operator_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -107,9 +112,12 @@ class RequestStatusHistory(Base):
 
 
 class Assignment(Base):
-    """An episode given to a request."""
+    """An episode given to a request, and the client's verdict on it."""
 
     __tablename__ = "assignments"
+    __table_args__ = (
+        CheckConstraint(_one_of("review_status", REVIEW_STATUSES), name="ck_assignments_review_status"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     request_id: Mapped[int] = mapped_column(ForeignKey("requests.id"), index=True)
@@ -117,5 +125,35 @@ class Assignment(Base):
     episode_id: Mapped[int] = mapped_column(ForeignKey("episodes.id"), unique=True)
     assigned_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     assigned_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    review_status: Mapped[str] = mapped_column(
+        String(10), default="pending", server_default="pending"
+    )
+    review_note: Mapped[str | None] = mapped_column(Text)  # why the client rejected it
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class MessageRead(Base):
+    """How far one person has read one request's chat (for unread counts)."""
+
+    __tablename__ = "message_reads"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    request_id: Mapped[int] = mapped_column(ForeignKey("requests.id"), primary_key=True)
+    last_read_id: Mapped[int] = mapped_column(default=0)
+
+
+class RequestMessage(Base):
+    """One chat message on a request, between its client and the operators."""
+
+    __tablename__ = "request_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # index: messages are always read per request, oldest first
+    request_id: Mapped[int] = mapped_column(ForeignKey("requests.id"), index=True)
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

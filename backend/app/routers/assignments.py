@@ -8,7 +8,7 @@ from app.db import get_db
 from app.deps import get_current_user, require_roles
 from app.models import Assignment, DatasetRequest, Episode, User
 from app.routers.requests import load_detail
-from app.schemas import AssignIn, EpisodeOut, RequestDetailOut
+from app.schemas import AssignIn, EpisodeOut, RequestDetailOut, RequestEpisodeOut
 from app.workflow import ASSIGNABLE_QUALITIES
 
 router = APIRouter(prefix="/requests", tags=["assignments"])
@@ -74,6 +74,8 @@ def assign_episodes(
     db.add_all(
         Assignment(request_id=request.id, episode_id=i, assigned_by=staff.id) for i in ids
     )
+    if request.operator_id is None:
+        request.operator_id = staff.id  # the first person to assign episodes runs this request
     try:
         db.commit()
     except IntegrityError:
@@ -102,12 +104,17 @@ def unassign_episode(
     )
     if assignment is None:
         raise HTTPException(status_code=404, detail="This episode is not assigned to this request")
+    if assignment.review_status == "accepted":
+        # The client already approved it in an earlier delivery: it is part of their dataset.
+        raise HTTPException(
+            status_code=409, detail="The client already accepted this episode; it cannot be removed"
+        )
     db.delete(assignment)
     db.commit()
     return load_detail(db, request_id, staff)
 
 
-@router.get("/{request_id}/episodes", response_model=list[EpisodeOut])
+@router.get("/{request_id}/episodes", response_model=list[RequestEpisodeOut])
 def request_episodes(
     request_id: int,
     db: Session = Depends(get_db),
@@ -121,9 +128,17 @@ def request_episodes(
     if db.scalar(visible) is None:
         raise HTTPException(status_code=404, detail="Request not found")
 
-    return db.scalars(
-        select(Episode)
+    rows = db.execute(
+        select(Episode, Assignment.review_status, Assignment.review_note)
         .join(Assignment, Assignment.episode_id == Episode.id)
         .where(Assignment.request_id == request_id)
         .order_by(Episode.id)
     ).all()
+    return [
+        RequestEpisodeOut(
+            **EpisodeOut.model_validate(episode).model_dump(),
+            review_status=status,
+            review_note=note,
+        )
+        for episode, status, note in rows
+    ]

@@ -157,7 +157,10 @@ def test_rejected_delivery_goes_back_for_rework_then_can_be_accepted(
 
     assert move(client, owner, request_id, "rejected").status_code == 200
     assert move(client, staff, request_id, "in_progress").status_code == 200  # rework
-    assert move(client, staff, request_id, "delivered").status_code == 200  # still has the 2
+    # Rejecting the whole delivery rejects its episodes: they no longer count.
+    assert move(client, staff, request_id, "delivered").status_code == 409
+    assign_episodes(request_id, 2, users["admin"].id)  # fresh replacements
+    assert move(client, staff, request_id, "delivered").status_code == 200
     assert move(client, owner, request_id, "accepted").status_code == 200
 
 
