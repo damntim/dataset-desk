@@ -8,6 +8,7 @@ import Import from "./pages/Import";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import RequestDetail from "./pages/RequestDetail";
+import Reports from "./pages/Reports";
 import Requests from "./pages/Requests";
 import Users from "./pages/Users";
 import { ToastProvider } from "./toast";
@@ -48,6 +49,7 @@ function App() {
         <Route path="requests/:id" element={<RequestDetail />} />
         <Route path="analytics" element={<Protected allow={isStaff}><Analytics /></Protected>} />
         <Route path="import" element={<Protected allow={isStaff}><Import /></Protected>} />
+        <Route path="reports" element={<Protected allow={(u) => u.role === "admin"}><Reports /></Protected>} />
         <Route path="users" element={<Protected allow={(u) => u.role === "admin"}><Users /></Protected>} />
         <Route path="*" element={<NotFound />} />
       </Route>

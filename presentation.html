@@ -238,7 +238,7 @@ body.overview .slide * { animation: none !important; opacity: 1 !important; }
   <h1 class="in">Robot data,<br><span class="grad">requested</span> and delivered.</h1>
   <p class="sub in">Replacing a spreadsheet with a platform where clients request teleoperation datasets, operators build them, and every step is tracked.</p>
   <div class="chips in">
-    <span class="chip">FastAPI</span><span class="chip">PostgreSQL</span><span class="chip">React</span><span class="chip">Docker</span><span class="chip">242 tests</span><span class="chip">CI ✓</span>
+    <span class="chip">FastAPI</span><span class="chip">PostgreSQL</span><span class="chip">React</span><span class="chip">Docker</span><span class="chip">255 tests</span><span class="chip">CI ✓</span>
   </div>
   <div class="float-card in">
     <div style="display:flex;justify-content:space-between;align-items:center" class="small muted"><span>Request #24 · Acme Robotics</span><span class="pill tone-violet">Delivered</span></div>
@@ -485,12 +485,30 @@ round 8:  <span class="g">200</span>  <span class="y">409</span>
   <div class="notes">Why the median and not the average? One request that took three weeks would drag the average up; the median is the typical request. The 12-month query reads almost the whole table, which is why a roll-up table is the first fix at scale.</div>
 </section>
 
+<!-- 10b ─────────────────────────────── INSIGHTS -->
+<section class="slide">
+  <div class="kicker in"><span class="num">09b</span> For the admin</div>
+  <h2 class="in">An insights report, <span class="grad">in every aspect</span>.</h2>
+  <div class="grid-4 stagger" style="margin-bottom:20px">
+    <div class="card stat" style="color:var(--violet)"><div class="label">First response</div><div class="big-number" style="font-size:44px">5h 32m</div><div class="bar"></div></div>
+    <div class="card stat" style="color:var(--violet)"><div class="label">Delivery time</div><div class="big-number" style="font-size:44px">2d 2h</div><div class="bar"></div></div>
+    <div class="card stat" style="color:var(--blue)"><div class="label">Client review</div><div class="big-number" style="font-size:44px">14h 37m</div><div class="bar"></div></div>
+    <div class="card stat" style="color:var(--amber)"><div class="label">Episodes rejected</div><div class="big-number" style="font-size:44px">14%</div><div class="bar"></div></div>
+  </div>
+  <div class="grid-3 fill stagger">
+    <div class="card"><div class="icon tone-amber">👑</div><h3>Operator leaderboard</h3><p>Accepted requests, on-time rate, share of episodes clients kept, median delivery. The top operator is highlighted.</p></div>
+    <div class="card"><div class="icon tone-red">👎</div><h3>What gets rejected</h3><p>Rejection rate by client, by robot and by task, plus every rejected video with the client's reason and who assigned it.</p></div>
+    <div class="card"><div class="icon tone-cyan">⏰</div><h3>At risk now</h3><p>Open requests that are overdue or due within 3 days, with their operator and progress.</p></div>
+  </div>
+  <div class="notes">All computed in PostgreSQL from the status history: created, first start, first delivery, first client decision. The numbers shown come from the demo history (python -m app.demo_data). Tested with a small story where every number is worked out by hand.</div>
+</section>
+
 <!-- 11 ─────────────────────────────── QUALITY -->
 <section class="slide">
   <div class="kicker in"><span class="num">10</span> How I know it works</div>
   <h2 class="in">Tested, broken on purpose, <span class="grad">checked by CI</span>.</h2>
   <div class="grid-4 stagger" style="margin-bottom:22px">
-    <div class="card stat" style="color:var(--violet)"><div class="label">Tests</div><div class="big-number">242</div><div class="bar"></div></div>
+    <div class="card stat" style="color:var(--violet)"><div class="label">Tests</div><div class="big-number">255</div><div class="bar"></div></div>
     <div class="card stat" style="color:var(--green)"><div class="label">CI jobs</div><div class="big-number">4 ✓</div><div class="bar"></div></div>
     <div class="card stat" style="color:var(--cyan)"><div class="label">Fresh clone up</div><div class="big-number">13 s</div><div class="bar"></div></div>
     <div class="card stat" style="color:var(--amber)"><div class="label">Import 200k</div><div class="big-number">36 s</div><div class="bar"></div></div>
@@ -506,7 +524,7 @@ round 8:  <span class="g">200</span>  <span class="y">409</span>
 remove <span class="p">ON CONFLICT DO NOTHING</span>  →  <span class="y">4 tests fail</span>
 remove the admin guard        →  <span class="y">2 tests fail</span>
 average instead of median     →  <span class="y">1 test fails</span>
-<span class="c"># restore</span>                      →  <span class="g">242 passed</span></pre></div>
+<span class="c"># restore</span>                      →  <span class="g">255 passed</span></pre></div>
   </div>
   <div class="notes">A test that has never failed proves nothing, so for each important rule I broke the code on purpose and checked a test turned red. CI runs lint, the tests against real PostgreSQL, the frontend build, and docker compose up from a clean checkout.</div>
 </section>

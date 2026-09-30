@@ -17,7 +17,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 MAX_RANGE_DAYS = 366  # keeps any single report bounded
 
 
-def _range_start_end(date_from: date, date_to: date) -> tuple[datetime, datetime]:
+def range_start_end(date_from: date, date_to: date) -> tuple[datetime, datetime]:
     """Turn two calendar days (both included) into [start, end) in UTC."""
     if date_to < date_from:
         raise HTTPException(status_code=422, detail="'from' must not be after 'to'")
@@ -39,7 +39,7 @@ def analytics(
     db: Session = Depends(get_db),
     _staff: User = Depends(require_roles("operator", "admin")),
 ):
-    start, end = _range_start_end(date_from, date_to)
+    start, end = range_start_end(date_from, date_to)
 
     # 1) Episodes recorded per day, per robot (days are UTC days).
     #    The (recorded_at, robot_id) index covers this query completely.

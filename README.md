@@ -4,7 +4,7 @@ An internal platform that replaces the dataset-request spreadsheet: **clients** 
 
 - **Backend:** Python 3.13, FastAPI, SQLAlchemy 2, Alembic, PostgreSQL 16
 - **Frontend:** React 19 + Vite, served by nginx
-- **Tests:** pytest (242 tests) against a real PostgreSQL · **CI:** GitHub Actions
+- **Tests:** pytest (255 tests) against a real PostgreSQL · **CI:** GitHub Actions
 - **Design notes, decisions and trade-offs:** see [NOTES.md](NOTES.md)
 - **Slide deck:** open [presentation.html](presentation.html) in a browser: the problem, the design, how it was tested, and a demo script (← → to navigate, F fullscreen, N speaker notes)
 
@@ -74,6 +74,14 @@ docker compose exec api python -m app.importer /seed/episodes.csv
 
 Both return a report: `imported + already_existed + skipped = total_rows`, with the line number and reason of every skipped row. Importing the same file again imports nothing new. The seed file gives **172 imported, 19 skipped**. The cleaning rules are listed in [NOTES.md](NOTES.md#b-data-cleaning-rules) (appendix).
 
+**Optional demo history** (so the reports have something to show; never runs by itself, safe to run twice):
+
+```bash
+docker compose exec api python -m app.demo_data
+```
+
+It creates 24 requests over the last 60 days in every state (accepted, reworked, rejected, in progress, overdue), following the same rules as the API.
+
 A large clean file for load testing: `python seed/generate_episodes.py 200000 > seed/episodes_large.csv`.
 
 ## API overview
@@ -94,6 +102,7 @@ All endpoints except `/auth/login` and `/health` need `Authorization: Bearer <to
 | `GET /requests/{id}/episodes` | owning client, staff | Episodes in a request, with the client's verdict |
 | `GET/POST /requests/{id}/messages`, `POST …/messages/read`, `GET /chats` | see NOTES.md | Chat per request, unread counts |
 | `GET /analytics?from=YYYY-MM-DD&to=YYYY-MM-DD` | operator, admin | Reports (below) |
+| `GET /reports/overview?from=…&to=…` | admin | Insights report: response, delivery and review times, on-time rate, operator leaderboard, client rejection rates, rejections by robot and task, every rejected video, requests at risk |
 | `GET /health` | anyone | App and database status |
 
 **Workflow:** `submitted → in_progress → delivered → accepted`, or `delivered → rejected → in_progress` (rework). Clients accept or reject their own deliveries; operators and admins do every other step. A request can only be delivered once it has at least the requested number of episodes. Every change is recorded with who and when. An invalid move answers 409, the wrong role 403, and another client's request 404.

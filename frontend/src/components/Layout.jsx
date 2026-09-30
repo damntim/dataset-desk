@@ -1,6 +1,6 @@
 // The frame around every page after login: sidebar (with counts), a top bar with the page
 // title, a bell and the date; on phones a bottom tab bar instead of the sidebar.
-import { Bell, ChartColumn, CloudUpload, LayoutGrid, LogOut, Moon, Sun, Users } from "lucide-react";
+import { Bell, ChartColumn, ChartPie, CloudUpload, LayoutGrid, LogOut, Moon, Sun, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, matchPath, useLocation } from "react-router-dom";
 import { useApi } from "../api";
@@ -17,7 +17,10 @@ function navItems(user, waiting) {
     items.push({ to: "/analytics", label: "Analytics", icon: ChartColumn });
     items.push({ to: "/import", label: "Import", icon: CloudUpload });
   }
-  if (user.role === "admin") items.push({ to: "/users", label: "Users", icon: Users });
+  if (user.role === "admin") {
+    items.push({ to: "/reports", label: "Reports", icon: ChartPie });
+    items.push({ to: "/users", label: "Users", icon: Users });
+  }
   return items;
 }
 
@@ -28,6 +31,7 @@ function pageTitle(pathname, user) {
     {
       "/": isStaff(user) ? "All requests" : "My requests",
       "/analytics": "Analytics",
+      "/reports": "Insights report",
       "/import": "Import episodes",
       "/users": "People and roles",
     }[pathname] ?? "Dataset Desk"

@@ -237,6 +237,100 @@ class AnalyticsOut(BaseModel):
     top_tasks_by_good_episodes: list[TaskCount]
 
 
+class ReportKpis(BaseModel):
+    requests: int
+    delivered: int
+    accepted: int
+    on_time_rate: float | None  # 0..1 of delivered requests; None when nothing was delivered
+    median_first_response_seconds: float | None  # created -> first "in_progress"
+    median_delivery_seconds: float | None  # created -> first "delivered"
+    median_client_review_seconds: float | None  # first delivery -> client's first decision
+    episodes_delivered: int
+    episodes_reviewed: int
+    episodes_rejected: int
+    episode_rejection_rate: float | None
+
+
+class ReportWeek(BaseModel):
+    week: date  # Monday of the week (UTC)
+    created: int
+    delivered: int
+    accepted: int
+
+
+class OperatorStats(BaseModel):
+    user_id: int
+    name: str
+    requests: int  # requests they ran (they assigned episodes first)
+    delivered: int
+    accepted: int
+    on_time_rate: float | None
+    median_delivery_seconds: float | None
+    episodes_assigned: int
+    episodes_accepted: int
+    episodes_rejected: int
+    episode_acceptance_rate: float | None
+
+
+class ClientStats(BaseModel):
+    user_id: int
+    name: str
+    requests: int
+    accepted: int
+    episodes_reviewed: int
+    episodes_rejected: int
+    rejection_rate: float | None
+    median_review_seconds: float | None
+
+
+class RejectionGroup(BaseModel):
+    key: str  # a robot id or a task name
+    reviewed: int
+    rejected: int
+    rate: float | None
+
+
+class RejectedEpisode(BaseModel):
+    id: int
+    episode_id: str
+    robot_id: str
+    task_name: str
+    quality: str
+    request_id: int
+    review_note: str | None
+    reviewed_at: datetime
+    client_name: str
+    assigned_by_name: str
+
+
+class AtRiskRequest(BaseModel):
+    id: int
+    task_name: str
+    status: str
+    deadline: date
+    days_left: int  # negative = overdue
+    episodes_requested: int
+    episodes_assigned: int
+    client_name: str
+    operator_name: str | None
+
+
+class ReportOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    date_from: date = Field(alias="from")
+    date_to: date = Field(alias="to")
+    kpis: ReportKpis
+    weekly: list[ReportWeek]
+    operators: list[OperatorStats]
+    top_operator: OperatorStats | None
+    clients: list[ClientStats]
+    rejections_by_robot: list[RejectionGroup]
+    rejections_by_task: list[RejectionGroup]
+    rejected_episodes: list[RejectedEpisode]
+    at_risk: list[AtRiskRequest]
+
+
 class ReasonOut(BaseModel):
     code: str
     message: str
