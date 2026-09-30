@@ -6,6 +6,7 @@ An internal platform that replaces the dataset-request spreadsheet: **clients** 
 - **Frontend:** React 19 + Vite, served by nginx
 - **Tests:** pytest (242 tests) against a real PostgreSQL · **CI:** GitHub Actions
 - **Design notes, decisions and trade-offs:** see [NOTES.md](NOTES.md)
+- **Slide deck:** open [presentation.html](presentation.html) in a browser: the problem, the design, how it was tested, and a demo script (← → to navigate, F fullscreen, N speaker notes)
 
 ![CI](https://github.com/damntim/dataset-desk/actions/workflows/ci.yml/badge.svg)
 

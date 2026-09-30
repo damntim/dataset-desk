@@ -1,5 +1,7 @@
 # Notes
 
+A short visual summary of the same material, with a live-demo script, is in [presentation.html](presentation.html) (open it in any browser).
+
 ## 1. Design
 
 ### Data model

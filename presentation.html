@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dataset Request Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   Keys:  → / Space / click right half = next   ← / click left half = back
+          F = fullscreen   N = speaker notes   O = overview   Home / End
+   Print (Ctrl+P, landscape) = one slide per page.
+   ============================================================ */
+:root {
+  --bg: #07090f;
+  --slide: #0d111b;
+  --surface: #141a28;
+  --surface-2: #1b2334;
+  --border: #253048;
+  --text: #eef1f8;
+  --text-2: #b9c1d3;
+  --muted: #7f8aa3;
+  --accent: #6f8cff;
+  --violet: #a89dff;
+  --cyan: #22d3ee;
+  --green: #4fd39b;
+  --amber: #f2b93b;
+  --red: #ff7b7b;
+  --blue: #6aa8f0;
+  --grad: linear-gradient(135deg, #7c6cff 0%, #3b82f6 50%, #22d3ee 100%);
+  --font: "Inter", system-ui, "Segoe UI", sans-serif;
+  --display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); overflow: hidden; -webkit-font-smoothing: antialiased; }
+
+/* The 16:9 stage is 1280x720 and is scaled to fit the window (see script). */
+#viewport { position: fixed; inset: 0; display: grid; place-items: center; }
+#stage { position: relative; width: 1280px; height: 720px; transform-origin: center center; }
+
+.slide {
+  position: absolute; inset: 0; padding: 64px 80px 56px; overflow: hidden;
+  background: radial-gradient(1200px 600px at 110% -10%, rgba(124, 108, 255, 0.16), transparent 60%),
+              radial-gradient(900px 500px at -10% 120%, rgba(34, 211, 238, 0.10), transparent 60%), var(--slide);
+  border-radius: 18px; box-shadow: 0 40px 120px -30px rgba(0, 0, 0, 0.8);
+  display: flex; flex-direction: column;
+  opacity: 0; visibility: hidden; transform: translateX(40px) scale(0.985);
+  transition: opacity 0.45s ease, transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1), visibility 0.45s;
+}
+.slide::before { /* faint grid */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px; mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000, transparent);
+}
+.slide.active { opacity: 1; visibility: visible; transform: none; }
+.slide.past { transform: translateX(-40px) scale(0.985); }
+
+/* content enters one piece at a time */
+.slide.active .in { animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.slide.active .in:nth-child(2) { animation-delay: 0.08s; }
+.slide.active .in:nth-child(3) { animation-delay: 0.16s; }
+.slide.active .in:nth-child(4) { animation-delay: 0.24s; }
+.slide.active .in:nth-child(5) { animation-delay: 0.32s; }
+.slide.active .in:nth-child(6) { animation-delay: 0.40s; }
+.stagger > * { opacity: 0; }
+.slide.active .stagger > * { animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.slide.active .stagger > *:nth-child(1) { animation-delay: 0.15s; }
+.slide.active .stagger > *:nth-child(2) { animation-delay: 0.25s; }
+.slide.active .stagger > *:nth-child(3) { animation-delay: 0.35s; }
+.slide.active .stagger > *:nth-child(4) { animation-delay: 0.45s; }
+.slide.active .stagger > *:nth-child(5) { animation-delay: 0.55s; }
+.slide.active .stagger > *:nth-child(6) { animation-delay: 0.65s; }
+.slide.active .stagger > *:nth-child(n+7) { animation-delay: 0.75s; }
+@keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes drift { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(30px, -20px); } }
+@keyframes dash { to { stroke-dashoffset: 0; } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* ---------- type ---------- */
+.kicker { font-family: var(--mono); font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.kicker .num { color: var(--muted); }
+h1, h2, h3 { font-family: var(--display); margin: 0; letter-spacing: -0.025em; line-height: 1.08; }
+h1 { font-size: 72px; font-weight: 700; }
+h2 { font-size: 46px; font-weight: 700; margin-bottom: 26px; }
+h3 { font-size: 22px; font-weight: 600; }
+p { margin: 0; }
+.lead { font-size: 22px; line-height: 1.5; color: var(--text-2); max-width: 900px; }
+.grad { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.muted { color: var(--muted); }
+code, .mono { font-family: var(--mono); font-size: 0.92em; }
+.small { font-size: 15px; }
+
+/* ---------- layout ---------- */
+.row { display: flex; gap: 24px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.fill { flex: 1; min-height: 0; }
+.center { display: grid; place-items: center; }
+
+.card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px 24px; }
+.card h3 { margin-bottom: 8px; }
+.card p { color: var(--text-2); font-size: 16.5px; line-height: 1.5; }
+.card .icon { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 16px; font-size: 22px; }
+.tone-violet { background: rgba(139, 125, 255, 0.16); color: var(--violet); }
+.tone-cyan { background: rgba(34, 211, 238, 0.13); color: var(--cyan); }
+.tone-green { background: rgba(79, 211, 155, 0.14); color: var(--green); }
+.tone-amber { background: rgba(242, 185, 59, 0.15); color: var(--amber); }
+.tone-red { background: rgba(255, 123, 123, 0.14); color: var(--red); }
+.tone-blue { background: rgba(106, 168, 240, 0.15); color: var(--blue); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 99px; font-size: 13px; font-weight: 600; }
+
+.big-number { font-family: var(--display); font-size: 64px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; }
+.stat { padding: 22px 24px; }
+.stat .label { font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.stat .big-number { margin: 12px 0 6px; }
+.stat .bar { height: 4px; width: 42px; border-radius: 99px; background: currentColor; margin-top: 14px; }
+
+.list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 14px; }
+.list li { display: flex; gap: 14px; align-items: flex-start; font-size: 19px; line-height: 1.45; color: var(--text-2); }
+.list li b { color: var(--text); font-weight: 600; }
+.list .dot { flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 13px; font-weight: 700; margin-top: 1px; }
+
+/* ---------- terminal ---------- */
+.term { background: #05070c; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; font-family: var(--mono); font-size: 16px; }
+.term .bar { display: flex; gap: 7px; padding: 12px 14px; background: #0c111b; border-bottom: 1px solid var(--border); }
+.term .bar i { width: 11px; height: 11px; border-radius: 50%; background: #ff5f57; }
+.term .bar i:nth-child(2) { background: #febc2e; } .term .bar i:nth-child(3) { background: #28c840; }
+.term pre { margin: 0; padding: 18px 20px; line-height: 1.75; color: #d6ddf0; white-space: pre-wrap; }
+.term .c { color: #6b7896; } .term .g { color: var(--green); } .term .p { color: var(--violet); } .term .y { color: var(--amber); }
+
+/* ---------- tables ---------- */
+table.t { width: 100%; border-collapse: collapse; font-size: 16px; }
+table.t th { text-align: left; font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 10px 14px; border-bottom: 1px solid var(--border); }
+table.t td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text-2); }
+table.t tr:last-child td { border-bottom: 0; }
+table.t td:first-child { color: var(--text); }
+
+/* ---------- bars (analytics) ---------- */
+.hbar { display: grid; grid-template-columns: 250px 1fr 90px; align-items: center; gap: 16px; font-size: 16.5px; }
+.hbar .track { height: 14px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+.hbar .fillbar { height: 100%; border-radius: 0 4px 4px 0; transform-origin: left; }
+.slide.active .hbar .fillbar { animation: grow 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) both 0.4s; }
+.hbar .v { font-family: var(--mono); text-align: right; color: var(--text); }
+
+/* ---------- title slide ---------- */
+.title-slide { justify-content: center; }
+.title-slide .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.55; animation: drift 12s ease-in-out infinite; }
+.title-slide .b1 { width: 460px; height: 460px; background: #6f5cff; top: -140px; right: -80px; }
+.title-slide .b2 { width: 360px; height: 360px; background: #22d3ee; bottom: -160px; left: 30%; animation-delay: -4s; opacity: 0.35; }
+.brand { display: flex; align-items: center; gap: 14px; margin-bottom: 40px; }
+.brand-mark { width: 54px; height: 54px; border-radius: 16px; background: var(--grad); display: grid; place-items: center; box-shadow: 0 14px 34px -10px rgba(111, 92, 255, 0.8); }
+.title-slide .sub { font-size: 26px; color: var(--text-2); margin-top: 22px; max-width: 760px; line-height: 1.45; }
+.chips { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 44px; }
+.chip { font-family: var(--mono); font-size: 14px; padding: 8px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); color: var(--text-2); }
+.float-card { position: absolute; right: 80px; bottom: 70px; width: 340px; padding: 22px; border-radius: 20px; background: rgba(20, 26, 40, 0.75); border: 1px solid var(--border); backdrop-filter: blur(12px); animation: float 6s ease-in-out infinite; }
+.progress { height: 8px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.progress div { height: 100%; background: var(--grad); border-radius: 99px; }
+
+/* ---------- problem slide ---------- */
+.sheet { font-family: var(--mono); font-size: 13.5px; background: #f7f7f2; color: #333; border-radius: 10px; overflow: hidden; transform: rotate(-2deg); box-shadow: 0 30px 60px -20px rgba(0,0,0,0.7); }
+.sheet table { border-collapse: collapse; width: 100%; }
+.sheet td { border: 1px solid #d9d9cf; padding: 6px 9px; white-space: nowrap; }
+.sheet tr:first-child td { background: #e9e9df; font-weight: 700; }
+.sheet .bad { background: #ffe1e1; color: #b3261e; font-weight: 700; }
+
+/* ---------- workflow diagram ---------- */
+.flow svg text { font-family: var(--display); }
+.flow .edge { stroke-dasharray: 400; stroke-dashoffset: 400; }
+.slide.active .flow .edge { animation: dash 1.2s ease forwards 0.3s; }
+.flow .rework { opacity: 0; }
+.slide.active .flow .rework { animation: rise 0.6s ease forwards 1.2s; }
+
+/* ---------- review mock ---------- */
+.seg { display: inline-flex; gap: 3px; padding: 3px; border-radius: 9px; background: var(--surface-2); border: 1px solid var(--border); }
+.seg span { padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.seg .k { background: rgba(79, 211, 155, 0.16); color: var(--green); }
+.seg .r { background: rgba(106, 168, 240, 0.16); color: var(--blue); }
+.seg .x { background: rgba(255, 123, 123, 0.16); color: var(--red); }
+.ep-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-bottom: 1px solid var(--border); font-size: 15px; }
+.ep-row:last-child { border-bottom: 0; }
+
+/* ---------- chat mock ---------- */
+.bubble { max-width: 80%; padding: 11px 15px; border-radius: 16px 16px 16px 5px; background: var(--surface-2); border: 1px solid var(--border); font-size: 15.5px; line-height: 1.4; }
+.bubble.me { align-self: flex-end; background: var(--accent); border-color: transparent; border-radius: 16px 16px 5px 16px; }
+.who { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.launcher { width: 58px; height: 58px; border-radius: 50%; background: var(--grad); display: grid; place-items: center; position: relative; font-size: 24px; box-shadow: 0 14px 30px -10px rgba(59,110,245,0.9); }
+.launcher b { position: absolute; top: -4px; right: -4px; background: #e5484d; color: #fff; font-size: 12px; border-radius: 99px; min-width: 22px; height: 22px; display: grid; place-items: center; border: 3px solid var(--slide); }
+
+/* ---------- chrome: progress, counter, notes ---------- */
+#bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--grad); transition: width 0.4s ease; z-index: 10; }
+#counter { position: fixed; right: 20px; bottom: 16px; font-family: var(--mono); font-size: 13px; color: var(--muted); z-index: 10; }
+#hint { position: fixed; left: 20px; bottom: 16px; font-family: var(--mono); font-size: 12px; color: #4b5570; z-index: 10; transition: opacity 0.6s; }
+.foot { position: absolute; left: 80px; right: 80px; bottom: 26px; display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12px; color: #4b5570; }
+.notes { display: none; }
+#notes-panel { position: fixed; left: 50%; bottom: 44px; transform: translateX(-50%); width: min(900px, 92vw); max-height: 30vh; overflow: auto; background: rgba(13, 17, 27, 0.96); border: 1px solid var(--border); border-radius: 14px; padding: 16px 20px; font-size: 16px; line-height: 1.55; color: var(--text-2); z-index: 20; display: none; }
+#notes-panel.show { display: block; }
+#notes-panel h4 { margin: 0 0 6px; font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+
+/* overview: all slides as thumbnails */
+body.overview { overflow: auto; }
+body.overview #viewport { position: static; display: block; padding: 30px; }
+body.overview #stage { transform: none !important; width: auto; height: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 22px; }
+body.overview .slide { position: relative; inset: auto; width: 1280px; height: 720px; opacity: 1; visibility: visible; transform: scale(0.25); transform-origin: top left; margin-bottom: -540px; margin-right: -960px; cursor: pointer; outline: 3px solid transparent; }
+body.overview .slide.active { outline-color: var(--accent); }
+body.overview .slide * { animation: none !important; opacity: 1 !important; }
+
+@media print {
+  @page { size: 1280px 720px; margin: 0; }
+  html, body { overflow: visible; height: auto; background: #07090f; }
+  #viewport { position: static; display: block; }
+  #stage { transform: none !important; width: 1280px; height: auto; }
+  .slide { position: relative; opacity: 1; visibility: visible; transform: none; border-radius: 0; box-shadow: none; page-break-after: always; break-after: page; width: 1280px; height: 720px; }
+  .slide * { animation: none !important; opacity: 1 !important; transform: none !important; }
+  #bar, #counter, #hint, #notes-panel { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div id="viewport"><div id="stage">
+
+<!-- 1 ─────────────────────────────── TITLE -->
+<section class="slide title-slide">
+  <div class="blob b1"></div><div class="blob b2"></div>
+  <div class="brand in">
+    <div class="brand-mark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M5 19V5h6a7 7 0 0 1 0 14H5z" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/><circle cx="18.5" cy="5.5" r="2.2" fill="#fff"/></svg></div>
+    <div><div style="font-family:var(--display);font-weight:700;font-size:20px">Dataset Desk</div><div class="muted small">Robot data requests</div></div>
+  </div>
+  <h1 class="in">Robot data,<br><span class="grad">requested</span> and delivered.</h1>
+  <p class="sub in">Replacing a spreadsheet with a platform where clients request teleoperation datasets, operators build them, and every step is tracked.</p>
+  <div class="chips in">
+    <span class="chip">FastAPI</span><span class="chip">PostgreSQL</span><span class="chip">React</span><span class="chip">Docker</span><span class="chip">242 tests</span><span class="chip">CI ✓</span>
+  </div>
+  <div class="float-card in">
+    <div style="display:flex;justify-content:space-between;align-items:center" class="small muted"><span>Request #24 · Acme Robotics</span><span class="pill tone-violet">Delivered</span></div>
+    <div style="font-family:var(--display);font-size:24px;font-weight:600;margin:10px 0 16px">200 × pick cup</div>
+    <div class="progress"><div style="width:100%"></div></div>
+    <div style="display:flex;justify-content:space-between;margin-top:10px" class="small muted"><span>Episodes</span><span style="color:var(--text)">200 / 200</span></div>
+  </div>
+  <div class="notes">Hello. I'll show what the problem was, what I built, how it works under the hood, how I tested it, and how to run it. About 10 minutes, then a live demo.</div>
+</section>
+
+<!-- 2 ─────────────────────────────── PROBLEM -->
+<section class="slide">
+  <div class="kicker in"><span class="num">01</span> The problem</div>
+  <h2 class="in">Today, it all lives in a <span class="grad">spreadsheet</span>.</h2>
+  <div class="grid-2 fill" style="align-items:center">
+    <ul class="list stagger">
+      <li><span class="dot tone-red">1</span><span><b>Anyone can edit anything.</b> No roles, no rules: a client could "accept" their own request.</span></li>
+      <li><span class="dot tone-red">2</span><span><b>No history.</b> Who moved a request to "delivered", and when? Nobody knows.</span></li>
+      <li><span class="dot tone-red">3</span><span><b>Messy exports.</b> Duplicates, blank values, mixed date formats, unknown robots.</span></li>
+      <li><span class="dot tone-red">4</span><span><b>Double booking.</b> The same video can end up in two clients' datasets.</span></li>
+      <li><span class="dot tone-red">5</span><span><b>No numbers.</b> How fast do we deliver? Which robot is busiest?</span></li>
+    </ul>
+    <div class="in center">
+      <div class="sheet">
+        <table>
+          <tr><td>episode_id</td><td>robot_id</td><td>task_name</td><td>recorded_at</td><td>dur</td><td>quality</td></tr>
+          <tr><td>EP-00006</td><td>arm-01</td><td class="bad">&nbsp;&nbsp;Pick Cup </td><td>2026-08-13T23:51</td><td>111</td><td>usable</td></tr>
+          <tr><td>EP-00014</td><td>arm-03</td><td>open drawer</td><td class="bad">14/08/2026 09:15</td><td>34</td><td>good</td></tr>
+          <tr><td>EP-00017</td><td>humanoid-01</td><td>place cup</td><td>2026-09-12T10:46</td><td class="bad">-5</td><td>good</td></tr>
+          <tr><td>EP-00020</td><td>mobile-01</td><td>fold towel</td><td>2026-08-11T00:14</td><td>90</td><td class="bad">excellent</td></tr>
+          <tr><td>EP-00024</td><td class="bad">arm-99</td><td>place cup</td><td>2026-09-09T12:33</td><td>88</td><td>usable</td></tr>
+          <tr><td class="bad">ep-00003</td><td>arm-02</td><td>wipe table</td><td>2026-08-22T09:10</td><td>33</td><td>good</td></tr>
+          <tr><td>EP-00025</td><td>arm-02</td><td>pour water</td><td class="bad">2031-01-01</td><td>47</td><td>good</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="notes">These are real rows from the export we were given. Spaces, capitals, a day-first date, a negative duration, a quality that doesn't exist, a robot that doesn't exist, a duplicate id in lower case, and a date in 2031.</div>
+</section>
+
+<!-- 3 ─────────────────────────────── ROLES -->
+<section class="slide">
+  <div class="kicker in"><span class="num">02</span> Who uses it</div>
+  <h2 class="in">Three roles, <span class="grad">checked on the server</span>.</h2>
+  <div class="grid-3 fill stagger">
+    <div class="card"><div class="icon tone-blue">🏢</div><h3>Client</h3><p>Creates requests ("200 episodes of pick cup by 20 Oct"), sees <b>only their own</b>, reviews each delivered episode, chats with their operator.</p></div>
+    <div class="card"><div class="icon tone-violet">🛠️</div><h3>Operator</h3><p>Sees every request, moves it through the workflow, imports episodes, filters and assigns them, chats on the requests they work on.</p></div>
+    <div class="card"><div class="icon tone-green">🛡️</div><h3>Admin</h3><p>Everything an operator can do, plus creates and deactivates users and changes roles. Reads every chat.</p></div>
+  </div>
+  <div class="card in" style="margin-top:22px;display:flex;gap:18px;align-items:center">
+    <span class="pill tone-amber">Rule</span>
+    <p style="color:var(--text-2);font-size:18px">Hiding a button is not security. Every endpoint checks the token (<code>401</code>) and the role (<code>403</code>). Another client's request answers <code>404</code>: we don't even admit it exists.</p>
+  </div>
+  <div class="notes">The difference between 401 and 403: 401 means "I don't know who you are", 403 means "I know you, but you may not". The 404 for another client's data is deliberate.</div>
+</section>
+
+<!-- 4 ─────────────────────────────── WORKFLOW -->
+<section class="slide">
+  <div class="kicker in"><span class="num">03</span> The workflow</div>
+  <h2 class="in">A request's life, <span class="grad">one rule table</span>.</h2>
+  <div class="flow in center fill">
+    <svg width="1100" height="300" viewBox="0 0 1100 300">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6f8cff"/></marker>
+        <marker id="arrY" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f2b93b"/></marker>
+        <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#ff7b7b"/></marker>
+      </defs>
+      <path class="edge" d="M190 110 H300" stroke="#6f8cff" stroke-width="3" fill="none" marker-end="url(#arr)"/>
+      <path class="edge" d="M490 110 H600" stroke="#6f8cff" stroke-width="3" fill="none" marker-end="url(#arr)"/>
+      <path class="edge" d="M790 95 C850 60, 860 60, 900 60" stroke="#4fd39b" stroke-width="3" fill="none" marker-end="url(#arr)"/>
+      <path class="edge" d="M790 125 C850 170, 860 175, 900 180" stroke="#ff7b7b" stroke-width="3" fill="none" marker-end="url(#arrR)"/>
+      <path class="rework" d="M990 212 C990 292, 400 292, 400 150" stroke="#f2b93b" stroke-width="3" fill="none" stroke-dasharray="8 8" marker-end="url(#arrY)"/>
+      <g font-size="20" font-weight="600" text-anchor="middle">
+        <rect x="20" y="80" width="170" height="60" rx="14" fill="rgba(106,168,240,0.15)" stroke="#6aa8f0"/><text x="105" y="117" fill="#6aa8f0">submitted</text>
+        <rect x="310" y="80" width="180" height="60" rx="14" fill="rgba(242,185,59,0.14)" stroke="#f2b93b"/><text x="400" y="117" fill="#f2b93b">in_progress</text>
+        <rect x="610" y="80" width="180" height="60" rx="14" fill="rgba(168,157,255,0.15)" stroke="#a89dff"/><text x="700" y="117" fill="#a89dff">delivered</text>
+        <rect x="905" y="30" width="170" height="60" rx="14" fill="rgba(79,211,155,0.14)" stroke="#4fd39b"/><text x="990" y="67" fill="#4fd39b">accepted</text>
+        <rect x="905" y="150" width="170" height="60" rx="14" fill="rgba(255,123,123,0.14)" stroke="#ff7b7b"/><text x="990" y="187" fill="#ff7b7b">rejected</text>
+      </g>
+      <g font-size="14" fill="#7f8aa3" text-anchor="middle" font-family="JetBrains Mono, monospace">
+        <text x="245" y="98">operator</text>
+        <text x="545" y="98">operator</text>
+        <text x="545" y="165">needs ≥ N episodes</text>
+        <text x="850" y="45">client</text>
+        <text x="850" y="200">client</text>
+        <text x="700" y="282">operator: rework</text>
+      </g>
+    </svg>
+  </div>
+  <div class="row stagger" style="gap:16px">
+    <div class="card" style="flex:1;padding:16px 20px"><p><b style="color:var(--text)">Invalid move</b> → <code>409</code> · <b style="color:var(--text)">wrong role</b> → <code>403</code></p></div>
+    <div class="card" style="flex:1;padding:16px 20px"><p><b style="color:var(--text)">Every change</b> is saved with who and when, in the same transaction</p></div>
+    <div class="card" style="flex:1;padding:16px 20px"><p><b style="color:var(--text)">The UI's buttons</b> come from the server (<code>allowed_next</code>)</p></div>
+  </div>
+  <div class="notes">The whole state machine is 10 lines in workflow.py. The frontend never re-implements it: the API tells each user which moves they may make, and the page draws those buttons.</div>
+</section>
+
+<!-- 5 ─────────────────────────────── ARCHITECTURE -->
+<section class="slide">
+  <div class="kicker in"><span class="num">04</span> What I built</div>
+  <h2 class="in">Three containers, <span class="grad">one command</span>.</h2>
+  <div class="in center" style="margin:10px 0 26px">
+    <svg width="1100" height="190" viewBox="0 0 1100 190">
+      <defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#7f8aa3"/></marker></defs>
+      <g font-family="Space Grotesk, sans-serif" text-anchor="middle">
+        <rect x="10" y="40" width="190" height="110" rx="18" fill="#141a28" stroke="#253048"/><text x="105" y="90" font-size="24" fill="#eef1f8" font-weight="600">Browser</text><text x="105" y="118" font-size="15" fill="#7f8aa3">React app</text>
+        <rect x="290" y="40" width="220" height="110" rx="18" fill="rgba(34,211,238,0.08)" stroke="#22d3ee"/><text x="400" y="90" font-size="24" fill="#22d3ee" font-weight="600">web · nginx</text><text x="400" y="118" font-size="15" fill="#7f8aa3">:3000 · /api → api</text>
+        <rect x="600" y="40" width="220" height="110" rx="18" fill="rgba(111,140,255,0.1)" stroke="#6f8cff"/><text x="710" y="90" font-size="24" fill="#6f8cff" font-weight="600">api · FastAPI</text><text x="710" y="118" font-size="15" fill="#7f8aa3">rules · auth · logs</text>
+        <rect x="910" y="40" width="180" height="110" rx="18" fill="rgba(79,211,155,0.08)" stroke="#4fd39b"/><text x="1000" y="90" font-size="24" fill="#4fd39b" font-weight="600">PostgreSQL</text><text x="1000" y="118" font-size="15" fill="#7f8aa3">data + guards</text>
+      </g>
+      <path d="M205 95 H282" stroke="#7f8aa3" stroke-width="2.5" marker-end="url(#a2)"/>
+      <path d="M515 95 H592" stroke="#7f8aa3" stroke-width="2.5" marker-end="url(#a2)"/>
+      <path d="M825 95 H902" stroke="#7f8aa3" stroke-width="2.5" marker-end="url(#a2)"/>
+    </svg>
+  </div>
+  <div class="grid-4 stagger">
+    <div class="card"><h3>Migrations</h3><p>Alembic: the same tables on every machine, versioned.</p></div>
+    <div class="card"><h3>Auth</h3><p>bcrypt passwords, JWT tokens, role guards on every endpoint.</p></div>
+    <div class="card"><h3>Logging</h3><p>One JSON line per request: method, path, status, time, user.</p></div>
+    <div class="card"><h3>/health</h3><p>Checks the database too; answers 503 when it is down.</p></div>
+  </div>
+  <div class="notes">On every start the API runs the migrations, creates the seed users, imports the seed CSV, then starts. That is why one command is enough from a clean clone.</div>
+</section>
+
+<!-- 6 ─────────────────────────────── IMPORT -->
+<section class="slide">
+  <div class="kicker in"><span class="num">05</span> Messy data in, clean data out</div>
+  <h2 class="in">The import cleans, rejects, and <span class="grad">explains</span>.</h2>
+  <div class="grid-2 fill">
+    <div class="stagger" style="display:flex;flex-direction:column;gap:14px">
+      <div class="card stat" style="color:var(--text)"><div class="label">Rows in the file</div><div class="big-number">191</div></div>
+      <div class="row">
+        <div class="card stat" style="flex:1;color:var(--green)"><div class="label">Imported</div><div class="big-number">172</div><div class="bar"></div></div>
+        <div class="card stat" style="flex:1;color:var(--amber)"><div class="label">Skipped, with reason</div><div class="big-number">19</div><div class="bar"></div></div>
+      </div>
+      <div class="card" style="padding:18px 22px"><p style="font-size:18px"><b style="color:var(--text)">Run it again:</b> <span style="color:var(--green)">0 imported</span>, 172 already existed. <code>INSERT … ON CONFLICT DO NOTHING</code> on a UNIQUE <code>episode_id</code>.</p></div>
+    </div>
+    <div class="card in" style="padding:6px 8px">
+      <table class="t">
+        <tr><th>In the file</th><th>Decision</th></tr>
+        <tr><td><code> arm-01</code>, <code>PICK CUP</code>, <code>Good</code></td><td>cleaned</td></tr>
+        <tr><td><code>14/08/2026 09:15</code>, <code>…Z</code></td><td>accepted, stored as UTC</td></tr>
+        <tr><td><code>45.5</code> seconds</td><td>rounded to 46</td></tr>
+        <tr><td><code>arm-99</code>, <code>excellent</code>, <code>-5</code></td><td>skipped + reason</td></tr>
+        <tr><td>recorded in <code>2031</code></td><td>skipped: future date</td></tr>
+        <tr><td>same id, <b>same</b> values</td><td>keep one</td></tr>
+        <tr><td>same id, <b>different</b> values</td><td style="color:var(--amber)">import neither</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="notes">The hardest call: EP-00011 appears twice, once "bad", once "good". First-row-wins would be arbitrary and could put a bad clip in a client's dataset. So neither is imported and both lines are reported; fix the file and re-import, which is safe because the import is idempotent. The 2031 date I found while double-checking an analytics number.</div>
+</section>
+
+<!-- 7 ─────────────────────────────── GUARDS -->
+<section class="slide">
+  <div class="kicker in"><span class="num">06</span> Rules that cannot be broken</div>
+  <h2 class="in">Two layers: clear messages, and <span class="grad">the database</span>.</h2>
+  <div class="grid-2 fill">
+    <ul class="list stagger">
+      <li><span class="dot tone-violet">✓</span><span><b>One episode, one request:</b> <code>UNIQUE(episode_id)</code> on assignments.</span></li>
+      <li><span class="dot tone-violet">✓</span><span><b>Only good or usable</b> episodes can be assigned, all-or-nothing per batch.</span></li>
+      <li><span class="dot tone-violet">✓</span><span><b>Deliver</b> needs at least the requested number of episodes.</span></li>
+      <li><span class="dot tone-violet">✓</span><span><b>Row lock</b> (<code>SELECT … FOR UPDATE</code>) while a request changes.</span></li>
+      <li><span class="dot tone-violet">✓</span><span><b>CHECK constraints</b> on role, status, quality.</span></li>
+    </ul>
+    <div class="in" style="display:flex;flex-direction:column;gap:16px">
+      <div class="term"><div class="bar"><i></i><i></i><i></i></div><pre><span class="c"># two operators, one episode, same instant — 8 rounds</span>
+round 1:  <span class="g">200</span>  <span class="y">409</span>
+round 2:  <span class="g">200</span>  <span class="y">409</span>
+   …
+round 8:  <span class="g">200</span>  <span class="y">409</span>
+<span class="c"># never a double assignment, never a 500</span></pre></div>
+      <div class="card" style="padding:16px 20px"><p>I removed my own pre-check on purpose: <b style="color:var(--text)">the database still refused</b>. Only the "nice message" test failed.</p></div>
+    </div>
+  </div>
+  <div class="notes">If two people click at the same second, application checks can both pass. The UNIQUE constraint is the final guard, and its error is turned into the same clean 409.</div>
+</section>
+
+<!-- 8 ─────────────────────────────── REVIEW -->
+<section class="slide">
+  <div class="kicker in"><span class="num">07</span> Beyond the brief: a real review</div>
+  <h2 class="in">Keep, return or reject <span class="grad">each episode</span>.</h2>
+  <div class="grid-2 fill">
+    <div class="card in" style="padding:0;overflow:hidden;align-self:start">
+      <div class="ep-row" style="background:var(--surface-2);font-family:var(--mono);font-size:12px;letter-spacing:0.1em;color:var(--muted)"><span>EPISODE</span><span>YOUR DECISION</span></div>
+      <div class="ep-row"><span class="mono">EP-00156 · mobile-01</span><span class="seg"><span class="k">Keep</span><span>Return</span><span>Reject</span></span></div>
+      <div class="ep-row"><span class="mono">EP-00121 · humanoid-01</span><span class="seg"><span>Keep</span><span class="r">Return</span><span>Reject</span></span></div>
+      <div class="ep-row" style="background:rgba(255,123,123,0.06)"><span class="mono">EP-00091 · arm-03</span><span class="seg"><span>Keep</span><span>Return</span><span class="x">Reject</span></span></div>
+      <div class="ep-row"><span class="mono">EP-00075 · arm-02</span><span class="seg"><span class="k">Keep</span><span>Return</span><span>Reject</span></span></div>
+      <div class="ep-row" style="background:var(--surface-2)"><span class="small"><span class="pill tone-green">Keeping 2</span> <span class="pill tone-blue">Returning 1</span> <span class="pill tone-red">Rejecting 1</span></span></div>
+    </div>
+    <ul class="list stagger">
+      <li><span class="dot tone-green">K</span><span><b>Keep</b>: accepted and locked. The operator can't remove it later.</span></li>
+      <li><span class="dot tone-blue">R</span><span><b>Return</b>: more than I asked for. Freed for other clients.</span></li>
+      <li><span class="dot tone-red">✕</span><span><b>Reject</b> (with a reason): back to rework; it stops counting.</span></li>
+      <li><span class="dot tone-amber">!</span><span><b>Asked for 2, got 5?</b> A plain accept is refused: return the extras or <b>extend the request</b> (logged in the chat).</span></li>
+    </ul>
+  </div>
+  <div class="notes">A request is like a contract. Silently accepting 5 when 2 were asked would hand over more than agreed and block episodes another client needs. The server enforces this, the UI only guides.</div>
+</section>
+
+<!-- 9 ─────────────────────────────── CHAT -->
+<section class="slide">
+  <div class="kicker in"><span class="num">08</span> Talking about the data</div>
+  <h2 class="in">A chat on every request, <span class="grad">for the right people</span>.</h2>
+  <div class="grid-2 fill">
+    <div class="card in" style="display:flex;flex-direction:column;gap:12px;align-self:start">
+      <div><div class="who">Acme Robotics · client</div><div class="bubble">Two of the towel clips look dark. Can you check EP-00038?</div></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end"><div class="who">You · operator</div><div class="bubble me">Checked — swapping it now, redelivering in 10 min.</div></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:6px"><div class="launcher">💬<b>3</b></div></div>
+    </div>
+    <div class="in">
+      <table class="t" style="font-size:17px">
+        <tr><th>Person</th><th>Read</th><th>Reply</th></tr>
+        <tr><td>Client who owns it</td><td style="color:var(--green)">✓</td><td style="color:var(--green)">✓</td></tr>
+        <tr><td>Operator who assigned the videos</td><td style="color:var(--green)">✓</td><td style="color:var(--green)">✓</td></tr>
+        <tr><td>Admin (didn't assign)</td><td style="color:var(--green)">✓</td><td style="color:var(--red)">read only</td></tr>
+        <tr><td>Any other operator</td><td style="color:var(--red)">✕</td><td style="color:var(--red)">✕</td></tr>
+      </table>
+      <p class="lead small" style="margin-top:20px">Floating button on every page with an <b style="color:var(--text)">unread count</b>, tracked per person and per request.</p>
+    </div>
+  </div>
+  <div class="notes">The rule is one small pure function, chat_rules.py, with its own test table. Read markers are per person: an admin reading a chat doesn't clear the client's unread count.</div>
+</section>
+
+<!-- 10 ─────────────────────────────── ANALYTICS -->
+<section class="slide">
+  <div class="kicker in"><span class="num">09</span> Analytics, done by the database</div>
+  <h2 class="in">Measured with <span class="grad">200,000</span> episodes.</h2>
+  <div class="grid-2 fill">
+    <div class="stagger" style="display:flex;flex-direction:column;gap:18px;justify-content:center">
+      <div class="hbar"><span>Per day per robot · 30 days</span><div class="track"><div class="fillbar" style="width:6%;background:var(--green)"></div></div><span class="v">18 ms</span></div>
+      <div class="hbar"><span>Top 5 tasks · 30 days</span><div class="track"><div class="fillbar" style="width:2%;background:var(--green)"></div></div><span class="v">5.6 ms</span></div>
+      <div class="hbar"><span>Top 5 tasks · 12 months</span><div class="track"><div class="fillbar" style="width:17%;background:var(--blue)"></div></div><span class="v">53 ms</span></div>
+      <div class="hbar"><span>Median time to deliver</span><div class="track"><div class="fillbar" style="width:38%;background:var(--blue)"></div></div><span class="v">122 ms</span></div>
+      <div class="hbar"><span>Per day per robot · 12 months</span><div class="track"><div class="fillbar" style="width:100%;background:var(--amber)"></div></div><span class="v">321 ms</span></div>
+    </div>
+    <div class="stagger" style="display:flex;flex-direction:column;gap:16px">
+      <div class="card"><h3>In SQL, not Python</h3><p><code>GROUP BY</code>, <code>percentile_cont(0.5)</code> for the median. The number of queries doesn't grow with the data (tested).</p></div>
+      <div class="card"><h3>At 5 million episodes</h3><p>A month stays fast (indexes read only the range). A full year ≈&nbsp;8&nbsp;s → next step: a <b style="color:var(--text)">daily roll-up table</b>.</p></div>
+      <div class="card"><h3>One index, measured</h3><p><code>(quality, recorded_at) INCLUDE (task_name)</code>: 17&nbsp;ms → <b style="color:var(--green)">5.6&nbsp;ms</b>.</p></div>
+    </div>
+  </div>
+  <div class="notes">Why the median and not the average? One request that took three weeks would drag the average up; the median is the typical request. The 12-month query reads almost the whole table, which is why a roll-up table is the first fix at scale.</div>
+</section>
+
+<!-- 11 ─────────────────────────────── QUALITY -->
+<section class="slide">
+  <div class="kicker in"><span class="num">10</span> How I know it works</div>
+  <h2 class="in">Tested, broken on purpose, <span class="grad">checked by CI</span>.</h2>
+  <div class="grid-4 stagger" style="margin-bottom:22px">
+    <div class="card stat" style="color:var(--violet)"><div class="label">Tests</div><div class="big-number">242</div><div class="bar"></div></div>
+    <div class="card stat" style="color:var(--green)"><div class="label">CI jobs</div><div class="big-number">4 ✓</div><div class="bar"></div></div>
+    <div class="card stat" style="color:var(--cyan)"><div class="label">Fresh clone up</div><div class="big-number">13 s</div><div class="bar"></div></div>
+    <div class="card stat" style="color:var(--amber)"><div class="label">Import 200k</div><div class="big-number">36 s</div><div class="bar"></div></div>
+  </div>
+  <div class="grid-2 fill">
+    <ul class="list stagger">
+      <li><span class="dot tone-violet">1</span><span><b>Authorization</b> for every role on every rule</span></li>
+      <li><span class="dot tone-violet">2</span><span><b>Every invalid status move</b> (409) and wrong role (403)</span></li>
+      <li><span class="dot tone-violet">3</span><span><b>Assignments</b>, including two operators racing</span></li>
+      <li><span class="dot tone-violet">4</span><span><b>Import twice = no duplicates</b>, every cleaning rule</span></li>
+    </ul>
+    <div class="term in"><div class="bar"><i></i><i></i><i></i></div><pre><span class="c"># break a rule on purpose… does a test catch it?</span>
+remove <span class="p">ON CONFLICT DO NOTHING</span>  →  <span class="y">4 tests fail</span>
+remove the admin guard        →  <span class="y">2 tests fail</span>
+average instead of median     →  <span class="y">1 test fails</span>
+<span class="c"># restore</span>                      →  <span class="g">242 passed</span></pre></div>
+  </div>
+  <div class="notes">A test that has never failed proves nothing, so for each important rule I broke the code on purpose and checked a test turned red. CI runs lint, the tests against real PostgreSQL, the frontend build, and docker compose up from a clean checkout.</div>
+</section>
+
+<!-- 12 ─────────────────────────────── WHAT WENT WRONG -->
+<section class="slide">
+  <div class="kicker in"><span class="num">11</span> Something that went wrong</div>
+  <h2 class="in">1 test in 40 failed. <span class="grad">Not my code.</span></h2>
+  <div class="grid-2 fill" style="align-items:center">
+    <ol class="list stagger" style="counter-reset:s">
+      <li><span class="dot tone-red">1</span><span><b>Symptom:</b> random <code>401</code> on a token issued a millisecond earlier.</span></li>
+      <li><span class="dot tone-amber">2</span><span><b>Reproduce:</b> a loop test, 250 logins, print the token's <code>iat</code> next to the clock.</span></li>
+      <li><span class="dot tone-violet">3</span><span><b>Cause:</b> Docker's virtual machine clock jumped <b>~22 s</b>. The token looked "issued in the future".</span></li>
+      <li><span class="dot tone-green">4</span><span><b>Fix:</b> accept 60 s of clock difference + a test for it.</span></li>
+    </ol>
+    <div class="term in"><div class="bar"><i></i><i></i><i></i></div><pre><span class="c"># what the loop printed on failure</span>
+now          = 1790776076.86
+token iat    = 1790776099      <span class="y">← 22 s ahead</span>
+error        = <span class="p">ImmatureSignatureError</span>
+
+<span class="c"># security.py</span>
+jwt.decode(token, secret,
+           algorithms=["HS256"],
+           <span class="g">leeway=60</span>)</pre></div>
+  </div>
+  <div class="notes">What I learned: when a test is flaky, don't retry it until it passes. Make it fail on demand, print what the code sees, then fix the cause. Clocks between machines are never equal.</div>
+</section>
+
+<!-- 13 ─────────────────────────────── SECURITY -->
+<section class="slide">
+  <div class="kicker in"><span class="num">12</span> Security</div>
+  <h2 class="in">What's in, and what I'd <span class="grad">worry about</span>.</h2>
+  <div class="grid-2 fill">
+    <div class="card in">
+      <h3 style="margin-bottom:16px">In place</h3>
+      <ul class="list" style="gap:10px">
+        <li style="font-size:17px">🔒 bcrypt passwords, same error for wrong email or password</li>
+        <li style="font-size:17px">🎫 JWT with a fixed algorithm (unsigned tokens refused)</li>
+        <li style="font-size:17px">⚡ Deactivation works at once, not at token expiry</li>
+        <li style="font-size:17px">🧾 Pydantic validation + CHECK constraints</li>
+        <li style="font-size:17px">📦 25 MB upload limit, UTF-8 only, bound SQL parameters</li>
+      </ul>
+    </div>
+    <div class="stagger" style="display:flex;flex-direction:column;gap:16px">
+      <div class="card"><div class="pill tone-red" style="margin-bottom:10px">Worry 1</div><h3>Broken access control</h3><p>A client changing <code>/requests/7</code> to <code>/8</code>. Every endpoint checks on the server, with tests per role.</p></div>
+      <div class="card"><div class="pill tone-red" style="margin-bottom:10px">Worry 2</div><h3>Token theft through XSS</h3><p>The token is in <code>localStorage</code>. Next: an httpOnly cookie, a Content-Security-Policy, login rate limiting.</p></div>
+    </div>
+  </div>
+  <div class="notes">I'm honest about the gaps: localStorage is simple but readable by any script on the page, and there is no rate limiting yet.</div>
+</section>
+
+<!-- 14 ─────────────────────────────── HOW TO RUN -->
+<section class="slide">
+  <div class="kicker in"><span class="num">13</span> How to run it</div>
+  <h2 class="in">From a clean clone, <span class="grad">one command</span>.</h2>
+  <div class="grid-2 fill">
+    <div class="term in"><div class="bar"><i></i><i></i><i></i></div><pre><span class="c"># 1. get it</span>
+git clone https://github.com/damntim/dataset-desk.git
+cd dataset-desk
+
+<span class="c"># 2. run everything (db, migrations, seed, api, web)</span>
+<span class="g">docker compose up --build</span>
+
+<span class="c"># 3. tests</span>
+docker compose run --rm api pytest -q
+
+<span class="c"># import a CSV from the command line</span>
+docker compose exec api python -m app.importer /seed/episodes.csv</pre></div>
+    <div class="stagger" style="display:flex;flex-direction:column;gap:14px">
+      <div class="card" style="padding:18px 22px"><p><b style="color:var(--text)">Web app</b> &nbsp;<code>http://localhost:3000</code><br><b style="color:var(--text)">API docs</b> &nbsp;<code>http://localhost:8000/docs</code></p></div>
+      <div class="card" style="padding:6px 8px">
+        <table class="t" style="font-size:15px">
+          <tr><th>Role</th><th>Email</th><th>Password</th></tr>
+          <tr><td>admin</td><td class="mono">admin@example.com</td><td class="mono">admin123</td></tr>
+          <tr><td>operator</td><td class="mono">ops1@example.com</td><td class="mono">ops123</td></tr>
+          <tr><td>client</td><td class="mono">client-a@example.com</td><td class="mono">client123</td></tr>
+          <tr><td>client</td><td class="mono">client-b@example.com</td><td class="mono">client123</td></tr>
+        </table>
+      </div>
+      <p class="muted small">The login page has one-click buttons for every account.</p>
+    </div>
+  </div>
+  <div class="notes">Only Docker is needed. On first start: migrations, 5 users, 172 episodes imported, then the API and the website start.</div>
+</section>
+
+<!-- 15 ─────────────────────────────── DEMO -->
+<section class="slide">
+  <div class="kicker in"><span class="num">14</span> Live demo</div>
+  <h2 class="in">Five minutes, <span class="grad">one full journey</span>.</h2>
+  <div class="grid-3 fill stagger" style="grid-template-rows:auto auto">
+    <div class="card"><div class="pill tone-blue" style="margin-bottom:12px">1 · Client</div><h3>Create a request</h3><p>Acme asks for 3 × "pick cup" by next month.</p></div>
+    <div class="card"><div class="pill tone-violet" style="margin-bottom:12px">2 · Operator</div><h3>Start and assign</h3><p>Filter good, free "pick cup" episodes, assign 4, try a <i>bad</i> one → refused.</p></div>
+    <div class="card"><div class="pill tone-violet" style="margin-bottom:12px">3 · Operator</div><h3>Deliver</h3><p>"Mark as delivered" unlocks only when enough episodes are assigned.</p></div>
+    <div class="card"><div class="pill tone-blue" style="margin-bottom:12px">4 · Client</div><h3>Review</h3><p>4 for 3 requested → choose: return 1 or extend. Reject one with a reason.</p></div>
+    <div class="card"><div class="pill tone-green" style="margin-bottom:12px">5 · Chat</div><h3>Talk</h3><p>Client asks why; operator replies; watch the unread badge.</p></div>
+    <div class="card"><div class="pill tone-amber" style="margin-bottom:12px">6 · Admin</div><h3>Oversee</h3><p>Analytics, the import report, the chat in read-only mode.</p></div>
+  </div>
+  <div class="notes">Use two browser windows (one normal, one private) so the client and the operator are logged in at the same time. Start with docker compose up already running.</div>
+</section>
+
+<!-- 16 ─────────────────────────────── NEXT -->
+<section class="slide">
+  <div class="kicker in"><span class="num">15</span> With two more days</div>
+  <h2 class="in">What I'd build <span class="grad">next</span>.</h2>
+  <div class="grid-3 fill stagger">
+    <div class="card"><div class="icon tone-cyan">⚡</div><h3>Live updates</h3><p>Server-Sent Events instead of polling, for request changes and chat.</p></div>
+    <div class="card"><div class="icon tone-violet">📊</div><h3>Roll-up table</h3><p>Daily counts updated at import, so any report is instant at millions of rows.</p></div>
+    <div class="card"><div class="icon tone-red">🔐</div><h3>Safer tokens</h3><p>httpOnly cookie, Content-Security-Policy, login rate limiting.</p></div>
+    <div class="card"><div class="icon tone-amber">🤖</div><h3>Robots table</h3><p>Known robots managed by admins, not a constant in code.</p></div>
+    <div class="card"><div class="icon tone-green">📥</div><h3>Streaming import</h3><p><code>COPY</code> into a staging table, as a background job with progress.</p></div>
+    <div class="card"><div class="icon tone-blue">🧪</div><h3>End-to-end tests</h3><p>Playwright for the main journeys in the browser.</p></div>
+  </div>
+  <div class="notes">These come straight from the "left out" section of my notes: I know where the limits are.</div>
+</section>
+
+<!-- 17 ─────────────────────────────── THANKS -->
+<section class="slide title-slide" style="align-items:flex-start">
+  <div class="blob b1"></div><div class="blob b2"></div>
+  <div class="kicker in">Thank you</div>
+  <h1 class="in">Questions?</h1>
+  <p class="sub in">The code, the notes and the CI runs are all in the repository.</p>
+  <div class="chips in">
+    <span class="chip">github.com/damntim/dataset-desk</span><span class="chip">README.md</span><span class="chip">NOTES.md</span>
+  </div>
+  <div class="notes">Offer to change something live: add a status, a new analytics number, or a new import rule.</div>
+</section>
+
+</div></div>
+
+<div id="counter"></div>
+<div id="hint">← → navigate · F fullscreen · N notes · O overview</div>
+<div id="notes-panel"><h4>Speaker notes</h4><div id="notes-text"></div></div>
+
+<script>
+(() => {
+  const slides = [...document.querySelectorAll(".slide")];
+  const stage = document.getElementById("stage");
+  const bar = document.getElementById("bar");
+  const counter = document.getElementById("counter");
+  const notesPanel = document.getElementById("notes-panel");
+  const notesText = document.getElementById("notes-text");
+  let index = 0;
+
+  // Scale the 1280x720 stage to fit the window, keeping 16:9.
+  function fit() {
+    if (document.body.classList.contains("overview")) return;
+    const scale = Math.min(window.innerWidth / 1360, window.innerHeight / 780);
+    stage.style.transform = `scale(${scale})`;
+  }
+
+  function show(n) {
+    index = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, i) => {
+      s.classList.toggle("active", i === index);
+      s.classList.toggle("past", i < index);
+    });
+    bar.style.width = `${((index + 1) / slides.length) * 100}%`;
+    counter.textContent = `${index + 1} / ${slides.length}`;
+    const note = slides[index].querySelector(".notes");
+    notesText.textContent = note ? note.textContent.trim() : "";
+    history.replaceState(null, "", `#${index + 1}`);
+  }
+
+  function toggleOverview(force) {
+    const on = force ?? !document.body.classList.contains("overview");
+    document.body.classList.toggle("overview", on);
+    if (on) stage.style.transform = "none"; else fit();
+    if (on) slides[index].scrollIntoView({ block: "center" });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    const k = e.key;
+    if (["ArrowRight", "PageDown", " ", "Enter"].includes(k)) { e.preventDefault(); show(index + 1); }
+    else if (["ArrowLeft", "PageUp", "Backspace"].includes(k)) { e.preventDefault(); show(index - 1); }
+    else if (k === "Home") show(0);
+    else if (k === "End") show(slides.length - 1);
+    else if (k === "f" || k === "F") {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+      else document.exitFullscreen?.();
+    }
+    else if (k === "n" || k === "N") notesPanel.classList.toggle("show");
+    else if (k === "o" || k === "O" || k === "Escape") toggleOverview(k === "Escape" ? false : undefined);
+  });
+
+  // Click: right side = next, left side = back. In overview: open the clicked slide.
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("#notes-panel")) return;
+    if (document.body.classList.contains("overview")) {
+      const s = e.target.closest(".slide");
+      if (s) { show(slides.indexOf(s)); toggleOverview(false); }
+      return;
+    }
+    show(e.clientX > window.innerWidth / 3 ? index + 1 : index - 1);
+  });
+
+  // Swipe on touch screens.
+  let startX = null;
+  document.addEventListener("touchstart", (e) => (startX = e.touches[0].clientX), { passive: true });
+  document.addEventListener("touchend", (e) => {
+    if (startX === null) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    if (Math.abs(dx) > 50) show(index + (dx < 0 ? 1 : -1));
+    startX = null;
+  });
+
+  window.addEventListener("resize", fit);
+  setTimeout(() => (document.getElementById("hint").style.opacity = 0), 6000);
+  fit();
+  show((parseInt(location.hash.slice(1), 10) || 1) - 1);
+})();
+</script>
+</body>
+</html>
