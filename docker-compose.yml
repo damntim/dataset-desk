@@ -19,7 +19,7 @@ services:
     build: ./backend
     environment:
       DATABASE_URL: postgresql+psycopg://desk:${POSTGRES_PASSWORD:-desk}@db:5432/desk
-      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-in-production-0123456789}
       SEED_DIR: /seed
     volumes:
       - ./backend:/code   # so files we generate in the container (migrations) appear on our disk

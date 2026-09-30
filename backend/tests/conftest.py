@@ -21,6 +21,8 @@ os.environ["DATABASE_URL"] = _dev_url.set(database=TEST_DB_NAME).render_as_strin
     hide_password=False
 )
 
+os.environ["BCRYPT_ROUNDS"] = "4"  # the minimum: password hashing is slow on purpose
+
 from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

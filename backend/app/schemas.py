@@ -105,3 +105,32 @@ class RequestOut(BaseModel):
 
 class RequestDetailOut(RequestOut):
     history: list[HistoryOut]
+
+
+class ReasonOut(BaseModel):
+    code: str
+    message: str
+
+
+class SkippedRowOut(BaseModel):
+    line: int
+    episode_id: str | None
+    reasons: list[ReasonOut]
+
+
+class ExistingRowOut(BaseModel):
+    line: int
+    episode_id: str
+
+
+class ImportReportOut(BaseModel):
+    """imported + already_existed + skipped = total_rows"""
+
+    total_rows: int
+    imported: int
+    already_existed: int
+    skipped: int
+    skipped_by_reason: dict[str, int]
+    skipped_details: list[SkippedRowOut]
+    already_existed_details: list[ExistingRowOut]
+    details_truncated: bool
