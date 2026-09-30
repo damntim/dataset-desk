@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.logging_config import setup_logging
-from app.routers import assignments, auth, episodes, requests, users
+from app.routers import analytics, assignments, auth, episodes, requests, users
 
 setup_logging()
 log = logging.getLogger("app.request")
@@ -19,6 +19,7 @@ app.include_router(users.router)
 app.include_router(requests.router)
 app.include_router(episodes.router)
 app.include_router(assignments.router)
+app.include_router(analytics.router)
 
 
 @app.middleware("http")

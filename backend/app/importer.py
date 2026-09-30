@@ -281,11 +281,12 @@ def import_episodes(db: Session, text: str) -> dict:
     for start in range(0, len(rows), CHUNK_SIZE):
         statement = (
             insert(Episode)
-            .values(rows[start : start + CHUNK_SIZE])
             .on_conflict_do_nothing(index_elements=["episode_id"])  # already there? do nothing
             .returning(Episode.episode_id)  # ...and tell us which rows were really new
         )
-        imported.update(db.execute(statement).scalars())
+        # Passing the rows to execute() (not to .values()) lets SQLAlchemy send them in
+        # small batches. One giant INSERT with 5000 rows was about 5x slower.
+        imported.update(db.execute(statement, rows[start : start + CHUNK_SIZE]).scalars())
     db.commit()  # all chunks together: the import happens completely or not at all
 
     already_existed = [

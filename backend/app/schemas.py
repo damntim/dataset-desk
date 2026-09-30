@@ -136,6 +136,34 @@ class AssignIn(BaseModel):
     episode_ids: list[int] = Field(min_length=1, max_length=500)  # database ids
 
 
+class DailyRobotCount(BaseModel):
+    day: date
+    robot_id: str
+    episodes: int
+
+
+class RequestFulfilment(BaseModel):
+    by_status: dict[str, int]  # every status is listed, with 0 when there are none
+    total: int
+    delivered_count: int  # requests that were delivered at least once (used for the median)
+    median_seconds_to_deliver: float | None  # None when nothing was delivered
+
+
+class TaskCount(BaseModel):
+    task_name: str
+    good_episodes: int
+
+
+class AnalyticsOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    date_from: date = Field(alias="from")
+    date_to: date = Field(alias="to")
+    episodes_per_day: list[DailyRobotCount]
+    requests: RequestFulfilment
+    top_tasks_by_good_episodes: list[TaskCount]
+
+
 class ReasonOut(BaseModel):
     code: str
     message: str

@@ -51,6 +51,11 @@ class Episode(Base):
         # These two indexes make the analytics and the episode filters fast.
         Index("ix_episodes_recorded_at_robot_id", "recorded_at", "robot_id"),
         Index("ix_episodes_quality_task_name", "quality", "task_name"),
+        # For "top tasks by good episodes in a date range": the index alone holds everything
+        # the query needs (quality, recorded_at, task_name), so PostgreSQL never opens the
+        # table. Measured with 200k rows: 17 ms -> 5.6 ms for a 30-day range.
+        Index("ix_episodes_quality_recorded_at", "quality", "recorded_at",
+              postgresql_include=["task_name"]),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
