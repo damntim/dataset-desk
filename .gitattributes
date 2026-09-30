@@ -1,0 +1,2 @@
+# Always store text files with Linux line endings (LF), so scripts work inside Docker.
+* text=auto eol=lf

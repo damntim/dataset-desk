@@ -1,0 +1,25 @@
+# Secrets
+.env
+
+# The company's task brief (not part of the submission)
+WORK_TASK.md
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Large generated test data
+seed/episodes_large.csv
