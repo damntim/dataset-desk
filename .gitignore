@@ -1,8 +1,11 @@
 # Secrets
 .env
 
-# The company's task brief (not part of the submission)
+# Private study notes and the company's brief (not part of the submission)
 WORK_TASK.md
+know.md
+docs/COMMANDS.md
+docs/WORKFLOW.md
 
 # Python
 .venv/
