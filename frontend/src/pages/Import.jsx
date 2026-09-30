@@ -16,6 +16,7 @@ const REASONS = {
   missing_task_name: "Missing task",
   invalid_task_name: "Task name too long",
   invalid_date: "Unreadable date",
+  future_date: "Date in the future",
   invalid_duration: "Bad duration",
   invalid_quality: "Bad quality",
   invalid_operator_name: "Operator name too long",

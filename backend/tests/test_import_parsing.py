@@ -1,6 +1,6 @@
 """Cleaning rules of the CSV import. Pure functions: no database, no web."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -63,6 +63,13 @@ def test_fractional_duration_is_rounded_half_up(text, expected):
     assert values["duration_seconds"] == expected
 
 
+def test_a_date_a_few_hours_ahead_is_tolerated():
+    """Clocks and time zones differ a little: up to 1 day ahead is accepted."""
+    soon = (datetime.now(UTC) + timedelta(hours=12)).strftime("%Y-%m-%dT%H:%M:%S")
+    values, codes = only_row(f"EP-1,arm-01,pick cup,{soon},30,Aline,good")
+    assert codes == []
+
+
 def test_empty_operator_name_is_allowed_and_stored_as_null():
     values, codes = only_row("EP-1,arm-01,pick cup,2026-08-01T10:00:00,30,,good")
     assert codes == []
@@ -82,6 +89,7 @@ REJECTED = [
     ("EP-1,arm-01,pick cup,not a date,30,Aline,good", "invalid_date"),
     ("EP-1,arm-01,pick cup,,30,Aline,good", "invalid_date"),
     ("EP-1,arm-01,pick cup,31/02/2026 10:00,30,Aline,good", "invalid_date"),
+    ("EP-1,arm-01,pick cup,2099-01-01T00:00:00,30,Aline,good", "future_date"),
     ("EP-1,arm-01,pick cup,2026-08-01T10:00:00,,Aline,good", "invalid_duration"),
     ("EP-1,arm-01,pick cup,2026-08-01T10:00:00,N/A,Aline,good", "invalid_duration"),
     ("EP-1,arm-01,pick cup,2026-08-01T10:00:00,-5,Aline,good", "invalid_duration"),

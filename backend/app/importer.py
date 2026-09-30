@@ -15,7 +15,7 @@ import re
 import sys
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 
@@ -39,6 +39,9 @@ KNOWN_ROBOTS = {"arm-01", "arm-02", "arm-03", "mobile-01", "humanoid-01"}
 ID_PATTERN = re.compile(r"^[A-Z0-9][A-Z0-9_-]{0,49}$")
 DAY_FIRST_FORMATS = ("%d/%m/%Y %H:%M:%S", "%d/%m/%Y %H:%M")  # 14/08/2026 09:15 = 14 August
 MAX_DURATION = 2_147_483_647  # the biggest number an integer column can hold
+# Recordings cannot come from the future. One day of slack covers time zones and
+# a recording machine whose clock is a little ahead.
+FUTURE_TOLERANCE = timedelta(days=1)
 CHUNK_SIZE = 5000  # rows per INSERT statement
 MAX_DETAILS = 500  # the report lists at most this many rows per list (the counts stay exact)
 
@@ -144,6 +147,11 @@ def clean_row(row: dict[str, str]) -> tuple[dict, list[Issue]]:
                 "invalid_date",
                 f"recorded_at is {_shown(row['recorded_at'])}; expected an ISO date-time or DD/MM/YYYY HH:MM",
             )
+        )
+    elif recorded_at > datetime.now(UTC) + FUTURE_TOLERANCE:
+        # A real date, but an impossible one: nothing can be recorded in the future.
+        issues.append(
+            ("future_date", f"recorded_at is {recorded_at:%Y-%m-%d %H:%M} UTC, which is in the future")
         )
 
     duration = parse_duration(row["duration_seconds"])

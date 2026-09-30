@@ -168,7 +168,7 @@ def test_real_seed_file_gives_the_expected_report_and_is_repeatable(client, user
 
     first = upload(client, staff, data).json()
     assert first["total_rows"] == 191
-    assert (first["imported"], first["already_existed"], first["skipped"]) == (173, 0, 18)
+    assert (first["imported"], first["already_existed"], first["skipped"]) == (172, 0, 19)
     assert first["skipped_by_reason"] == {
         "duplicate_in_file": 2,  # EP-00030, EP-00074: identical copies
         "conflicting_duplicate": 4,  # EP-00003, EP-00011: two lines each, different values
@@ -176,6 +176,7 @@ def test_real_seed_file_gives_the_expected_report_and_is_repeatable(client, user
         "invalid_quality": 2,  # empty, "excellent"
         "invalid_duration": 3,  # empty, -5, N/A
         "invalid_date": 1,  # "not a date"
+        "future_date": 1,  # EP-00025, recorded "2031-01-01"
         "unknown_robot": 1,  # arm-99
         "missing_robot": 1,
         "malformed_row": 1,  # only 5 columns
@@ -183,8 +184,8 @@ def test_real_seed_file_gives_the_expected_report_and_is_repeatable(client, user
     }
 
     second = upload(client, staff, data).json()
-    assert (second["imported"], second["already_existed"], second["skipped"]) == (0, 173, 18)
-    assert episode_count() == 173
+    assert (second["imported"], second["already_existed"], second["skipped"]) == (0, 172, 19)
+    assert episode_count() == 172
 
     with SessionLocal() as db:
         # These were dirty in the file and must be clean in the database.
