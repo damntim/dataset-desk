@@ -1,4 +1,11 @@
+from datetime import datetime, timedelta, timezone
+
 import bcrypt
+import jwt
+
+from app.config import settings
+
+ALGORITHM = "HS256"
 
 
 def hash_password(password: str) -> str:
@@ -8,4 +15,28 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return bcrypt.checkpw(password.encode(), password_hash.encode())
+    try:
+        return bcrypt.checkpw(password.encode(), password_hash.encode())
+    except ValueError:  # bcrypt refuses passwords longer than 72 bytes
+        return False
+
+
+def create_access_token(user_id: int) -> str:
+    """The 'wristband': who the user is (sub), when it was made (iat), when it expires (exp)."""
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": str(user_id),
+        "iat": now,
+        "exp": now + timedelta(minutes=settings.jwt_expire_minutes),
+    }
+    return jwt.encode(payload, settings.jwt_secret, algorithm=ALGORITHM)
+
+
+def decode_access_token(token: str) -> int | None:
+    """Return the user id if the wristband is genuine and not expired, else None."""
+    try:
+        # We always say which algorithm is allowed. Never trust the token to choose.
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[ALGORITHM])
+        return int(payload["sub"])
+    except (jwt.PyJWTError, KeyError, ValueError):
+        return None
