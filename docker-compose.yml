@@ -20,6 +20,10 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://desk:${POSTGRES_PASSWORD:-desk}@db:5432/desk
       JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
+      SEED_DIR: /seed
+    volumes:
+      - ./backend:/code   # so files we generate in the container (migrations) appear on our disk
+      - ./seed:/seed:ro
     ports:
       - "8000:8000"
     depends_on:
