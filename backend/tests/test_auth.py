@@ -7,9 +7,12 @@ from app.config import settings
 from tests.conftest import PASSWORD
 
 
-def make_token(user_id: int, *, secret=settings.jwt_secret, minutes=60, algorithm="HS256"):
-    now = datetime.now(timezone.utc)
-    payload = {"sub": str(user_id), "iat": now, "exp": now + timedelta(minutes=minutes)}
+def make_token(
+    user_id: int, *, secret=settings.jwt_secret, minutes=60, algorithm="HS256", issued_in=0
+):
+    """issued_in: seconds from now that the token claims it was issued (negative = past)."""
+    issued = datetime.now(timezone.utc) + timedelta(seconds=issued_in)
+    payload = {"sub": str(user_id), "iat": issued, "exp": issued + timedelta(minutes=minutes)}
     return jwt.encode(payload, secret, algorithm=algorithm)
 
 
@@ -62,8 +65,16 @@ def test_me_with_garbage_token_is_401(client):
 
 
 def test_expired_token_is_401(client, users):
-    token = make_token(users["client_a"].id, minutes=-1)
+    token = make_token(users["client_a"].id, minutes=-5)
     assert client.get("/auth/me", headers=bearer(token)).status_code == 401
+
+
+def test_small_clock_difference_is_tolerated_but_a_big_one_is_not(client, users):
+    """Two machines' clocks never match exactly. Docker on Windows once jumped 22 seconds
+    and made valid tokens look 'issued in the future'. We allow 60 seconds of skew."""
+    headers = lambda seconds: bearer(make_token(users["admin"].id, issued_in=seconds))  # noqa: E731
+    assert client.get("/auth/me", headers=headers(+25)).status_code == 200
+    assert client.get("/auth/me", headers=headers(+600)).status_code == 401
 
 
 def test_token_signed_with_another_secret_is_401(client, users):

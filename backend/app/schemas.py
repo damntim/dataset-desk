@@ -1,9 +1,11 @@
 """Shapes of the data that goes IN and OUT of the API (the 'order forms')."""
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 Role = Literal["client", "operator", "admin"]
+Status = Literal["submitted", "in_progress", "delivered", "accepted", "rejected"]
 
 
 class LoginIn(BaseModel):
@@ -50,3 +52,56 @@ class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     role: Role | None = None
     is_active: bool | None = None
+
+
+class RequestCreate(BaseModel):
+    task_name: str = Field(min_length=1, max_length=255)
+    episodes_requested: int = Field(gt=0, le=100_000)
+    deadline: date
+    notes: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("task_name")
+    @classmethod
+    def clean_task_name(cls, value: str) -> str:
+        # Same style as the episodes ("pick cup"), so filters and matching just work.
+        value = " ".join(value.split()).lower()
+        if not value:
+            raise ValueError("task_name must not be empty")
+        return value
+
+    @field_validator("deadline")
+    @classmethod
+    def deadline_not_in_the_past(cls, value: date) -> date:
+        if value < date.today():
+            raise ValueError("deadline must not be in the past")
+        return value
+
+
+class StatusChange(BaseModel):
+    status: Status
+
+
+class HistoryOut(BaseModel):
+    from_status: str | None
+    to_status: str
+    changed_by_name: str
+    changed_at: datetime
+
+
+class RequestOut(BaseModel):
+    id: int
+    client_id: int
+    client_name: str
+    task_name: str
+    episodes_requested: int
+    episodes_assigned: int
+    deadline: date
+    notes: str | None
+    status: Status
+    created_at: datetime
+    # The moves the CURRENT viewer may make. The UI shows its buttons from this list.
+    allowed_next: list[Status]
+
+
+class RequestDetailOut(RequestOut):
+    history: list[HistoryOut]

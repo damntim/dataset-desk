@@ -6,6 +6,9 @@ import jwt
 from app.config import settings
 
 ALGORITHM = "HS256"
+# Clocks of different machines never agree perfectly (and Docker on Windows can jump by
+# ~20 seconds). We accept tokens whose times are off by up to this many seconds.
+CLOCK_SKEW_SECONDS = 60
 
 
 def hash_password(password: str) -> str:
@@ -36,7 +39,9 @@ def decode_access_token(token: str) -> int | None:
     """Return the user id if the wristband is genuine and not expired, else None."""
     try:
         # We always say which algorithm is allowed. Never trust the token to choose.
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token, settings.jwt_secret, algorithms=[ALGORITHM], leeway=CLOCK_SKEW_SECONDS
+        )
         return int(payload["sub"])
     except (jwt.PyJWTError, KeyError, ValueError):
         return None

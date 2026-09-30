@@ -2,11 +2,13 @@
 
 Tests use a SEPARATE database called desk_test, so they can never touch real data.
 """
+import itertools
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, update
 from sqlalchemy.engine import make_url
 
 # 1) Point the app at the TEST database. This must happen BEFORE the app is imported,
@@ -25,7 +27,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app.db import SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import Base, User  # noqa: E402
+from app.models import Assignment, Base, DatasetRequest, Episode, User  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -104,6 +106,64 @@ def users(make_user):
         "client_a": make_user("client-a@test.com", "client", organisation="Acme"),
         "client_b": make_user("client-b@test.com", "client", organisation="Beta"),
     }
+
+
+_episode_numbers = itertools.count(1)
+
+
+@pytest.fixture
+def make_episodes():
+    """Create n episodes straight in the database. Returns their database ids."""
+
+    def _make(n: int, quality: str = "good", task_name: str = "pick cup") -> list[int]:
+        with SessionLocal() as db:
+            episodes = [
+                Episode(
+                    episode_id=f"EP-T{next(_episode_numbers):05d}",
+                    robot_id="arm-01",
+                    task_name=task_name,
+                    recorded_at=datetime(2026, 8, 1, 10, 0, tzinfo=timezone.utc),
+                    duration_seconds=30,
+                    operator_name="Tester",
+                    quality=quality,
+                )
+                for _ in range(n)
+            ]
+            db.add_all(episodes)
+            db.commit()
+            return [e.id for e in episodes]
+
+    return _make
+
+
+@pytest.fixture
+def assign_episodes(make_episodes):
+    """Give a request n fresh good episodes (bypassing the API on purpose)."""
+
+    def _assign(request_id: int, n: int, assigned_by: int) -> None:
+        ids = make_episodes(n)
+        with SessionLocal() as db:
+            db.add_all(
+                Assignment(request_id=request_id, episode_id=i, assigned_by=assigned_by)
+                for i in ids
+            )
+            db.commit()
+
+    return _assign
+
+
+@pytest.fixture
+def set_status():
+    """Force a request into any status, to test a move without walking there."""
+
+    def _set(request_id: int, status: str) -> None:
+        with SessionLocal() as db:
+            db.execute(
+                update(DatasetRequest).where(DatasetRequest.id == request_id).values(status=status)
+            )
+            db.commit()
+
+    return _set
 
 
 @pytest.fixture
