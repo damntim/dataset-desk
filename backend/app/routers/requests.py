@@ -48,7 +48,7 @@ def _to_out(row, viewer: User) -> dict:
     }
 
 
-def _load_detail(db: Session, request_id: int, viewer: User) -> RequestDetailOut:
+def load_detail(db: Session, request_id: int, viewer: User) -> RequestDetailOut:
     """One request with its history. A client only ever sees their own: for anything
     else we answer 404, so we do not even reveal that the request exists."""
     stmt = _base_query().where(DatasetRequest.id == request_id)
@@ -98,7 +98,7 @@ def create_request(
         )
     )
     db.commit()  # request + first history row are saved together, or not at all
-    return _load_detail(db, request.id, client)
+    return load_detail(db, request.id, client)
 
 
 @router.get("", response_model=list[RequestOut])
@@ -128,7 +128,7 @@ def get_request(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    return _load_detail(db, request_id, user)
+    return load_detail(db, request_id, user)
 
 
 @router.patch("/{request_id}/status", response_model=RequestDetailOut)
@@ -177,4 +177,4 @@ def change_status(
     )
     request.status = body.status
     db.commit()  # status change + history row: one transaction
-    return _load_detail(db, request_id, user)
+    return load_detail(db, request_id, user)

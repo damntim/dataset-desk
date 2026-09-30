@@ -169,9 +169,10 @@ def test_real_seed_file_gives_the_expected_report_and_is_repeatable(client, user
 
     first = upload(client, staff, data).json()
     assert first["total_rows"] == 191
-    assert (first["imported"], first["already_existed"], first["skipped"]) == (175, 0, 16)
+    assert (first["imported"], first["already_existed"], first["skipped"]) == (173, 0, 18)
     assert first["skipped_by_reason"] == {
-        "duplicate_in_file": 4,  # EP-00003, EP-00011, EP-00030, EP-00074
+        "duplicate_in_file": 2,  # EP-00030, EP-00074: identical copies
+        "conflicting_duplicate": 4,  # EP-00003, EP-00011: two lines each, different values
         "missing_episode_id": 1,
         "invalid_quality": 2,  # empty, "excellent"
         "invalid_duration": 3,  # empty, -5, N/A
@@ -183,8 +184,8 @@ def test_real_seed_file_gives_the_expected_report_and_is_repeatable(client, user
     }
 
     second = upload(client, staff, data).json()
-    assert (second["imported"], second["already_existed"], second["skipped"]) == (0, 175, 16)
-    assert episode_count() == 175
+    assert (second["imported"], second["already_existed"], second["skipped"]) == (0, 173, 18)
+    assert episode_count() == 173
 
     with SessionLocal() as db:
         # These were dirty in the file and must be clean in the database.
@@ -192,7 +193,7 @@ def test_real_seed_file_gives_the_expected_report_and_is_repeatable(client, user
     assert by_id["EP-00008"].robot_id == "arm-01"  # was " arm-01"
     assert by_id["EP-00006"].task_name == "pick cup"  # was "  Pick Cup "
     assert by_id["EP-00009"].quality == "good"  # was "Good"
-    assert by_id["EP-00003"].episode_id == "EP-00003"  # "ep-00003" was a duplicate, first kept
+    assert "EP-00003" not in by_id and "EP-00011" not in by_id  # conflicting: neither imported
     assert by_id["EP-00014"].recorded_at.day == 14  # was "14/08/2026 09:15"
     assert by_id["EP-00018"].duration_seconds in (45, 46)  # was 45.5
     assert all(e.robot_id in {"arm-01", "arm-02", "arm-03", "mobile-01", "humanoid-01"}

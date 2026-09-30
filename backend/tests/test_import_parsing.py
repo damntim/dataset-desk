@@ -121,11 +121,12 @@ def test_duplicate_with_same_values_is_skipped_and_points_to_the_first():
     assert "line 2" in message and "same values" in message
 
 
-def test_duplicate_with_different_values_keeps_the_first():
+def test_duplicate_with_different_values_imports_neither_and_reports_both_lines():
     other = "ep-1,arm-02,fold towel,2026-08-02T10:00:00,99,Eric,bad"  # also different capitals
     result = parse_csv(csv_of(GOOD, other))
-    assert result.valid[0][1]["robot_id"] == "arm-01"
-    assert "different values" in result.skipped[0].issues[0][1]
+    assert result.valid == []
+    assert [s.line for s in result.skipped] == [2, 3]
+    assert all(s.issues[0][0] == "conflicting_duplicate" for s in result.skipped)
 
 
 def test_an_invalid_first_row_does_not_block_a_valid_second_row_with_the_same_id():

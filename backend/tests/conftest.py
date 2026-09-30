@@ -4,7 +4,7 @@ Tests use a SEPARATE database called desk_test, so they can never touch real dat
 """
 import itertools
 import os
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -166,6 +166,26 @@ def set_status():
             db.commit()
 
     return _set
+
+
+@pytest.fixture
+def make_request(client, users, login_as, set_status):
+    """Create a request through the API (as a client), then force its status."""
+
+    def _make(owner: str = "client_a", status: str = "in_progress", episodes_requested: int = 2):
+        body = {
+            "task_name": "pick cup",
+            "episodes_requested": episodes_requested,
+            "deadline": (date.today() + timedelta(days=30)).isoformat(),
+        }
+        response = client.post("/requests", json=body, headers=login_as(users[owner]))
+        assert response.status_code == 201, response.text
+        request_id = response.json()["id"]
+        if status != "submitted":
+            set_status(request_id, status)
+        return request_id
+
+    return _make
 
 
 @pytest.fixture

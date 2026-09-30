@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 Role = Literal["client", "operator", "admin"]
 Status = Literal["submitted", "in_progress", "delivered", "accepted", "rejected"]
+Quality = Literal["good", "usable", "bad"]
 
 
 class LoginIn(BaseModel):
@@ -105,6 +106,34 @@ class RequestOut(BaseModel):
 
 class RequestDetailOut(RequestOut):
     history: list[HistoryOut]
+
+
+class EpisodeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    episode_id: str
+    robot_id: str
+    task_name: str
+    recorded_at: datetime
+    duration_seconds: int
+    operator_name: str | None
+    quality: Quality
+
+
+class EpisodeListItem(EpisodeOut):
+    assigned_request_id: int | None  # which request has it (empty = still free)
+
+
+class EpisodePage(BaseModel):
+    items: list[EpisodeListItem]
+    total: int  # how many match the filters, across all pages
+    limit: int
+    offset: int
+
+
+class AssignIn(BaseModel):
+    episode_ids: list[int] = Field(min_length=1, max_length=500)  # database ids
 
 
 class ReasonOut(BaseModel):

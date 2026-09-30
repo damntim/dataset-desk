@@ -195,7 +195,7 @@ def parse_csv(text: str) -> ParseResult:
     position = {name: names.index(name) for name in COLUMNS}  # so column order does not matter
 
     result = ParseResult()
-    seen: dict[str, tuple[int, dict]] = {}  # episode_id -> (line, values) of the first valid row
+    candidates: list[tuple[int, dict]] = []  # valid rows; duplicates are sorted out at the end
 
     while True:
         try:
@@ -231,23 +231,43 @@ def parse_csv(text: str) -> ParseResult:
             continue
 
         values, issues = clean_row({name: cells[pos] for name, pos in position.items()})
-        if not issues:
-            first = seen.get(values["episode_id"])
-            if first is not None:
-                first_line, first_values = first
-                detail = "same values" if first_values == values else (
-                    "different values, the first one was kept"
-                )
-                issues.append(
-                    ("duplicate_in_file", f"episode_id already appears on line {first_line} ({detail})")
-                )
-            else:
-                seen[values["episode_id"]] = (line, values)
-                result.valid.append((line, values))
-                continue
-        result.skipped.append(Skipped(line, values["episode_id"] or guessed_id, issues))
+        if issues:
+            result.skipped.append(Skipped(line, values["episode_id"] or guessed_id, issues))
+        else:
+            candidates.append((line, values))
 
+    _resolve_duplicates(candidates, result)
     return result
+
+
+def _resolve_duplicates(candidates: list[tuple[int, dict]], result: ParseResult) -> None:
+    """Same episode_id on several lines:
+      - identical rows      -> keep one, the others are harmless copies;
+      - different values    -> we cannot know which is right, so import NONE of them
+                               and report every line. Someone fixes the file and imports again
+                               (safe, because the import is idempotent)."""
+    groups: dict[str, list[tuple[int, dict]]] = {}
+    for line, values in candidates:
+        groups.setdefault(values["episode_id"], []).append((line, values))
+
+    for episode_id, rows in groups.items():
+        first_line, first_values = rows[0]
+        if all(values == first_values for _, values in rows):
+            result.valid.append((first_line, first_values))
+            for line, _ in rows[1:]:
+                message = f"same episode_id and same values as line {first_line}"
+                result.skipped.append(Skipped(line, episode_id, [("duplicate_in_file", message)]))
+        else:
+            shown = ", ".join(str(line) for line, _ in rows[:5]) + (", ..." if len(rows) > 5 else "")
+            message = (
+                f"episode_id appears on lines {shown} with different values; "
+                "none were imported. Fix the file, then import again"
+            )
+            for line, _ in rows:
+                result.skipped.append(Skipped(line, episode_id, [("conflicting_duplicate", message)]))
+
+    result.valid.sort(key=lambda row: row[0])  # back to file order
+    result.skipped.sort(key=lambda skipped: skipped.line)
 
 
 # ---------------------------------------------------------------- step 2: save the valid rows

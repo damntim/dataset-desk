@@ -3,6 +3,9 @@
 Plain data and one tiny function. No database, no web code, so it is easy to read and test.
 """
 
+# Only episodes of these qualities may be given to a request.
+ASSIGNABLE_QUALITIES = ("good", "usable")
+
 OPERATORS = {"operator", "admin"}
 CLIENTS = {"client"}
 
