@@ -82,9 +82,12 @@ Indexes already in place: `(recorded_at, robot_id)` for the per-day report and d
 
 ## 6. AI tooling
 
-I used **Claude Code** (Anthropic's coding assistant) throughout, as a pair programmer in a step-by-step teaching mode. It proposed the plan and wrote most of the code, tests and configuration, and explained each piece in plain language as we went. I ran everything myself, and read, questioned and changed the code. The product decisions were mine after discussing the options: how conflicting duplicates are handled, rejecting future dates, the per-episode review and over-delivery rule, and who may use the chat.
+I used **Claude Code** (Anthropic's coding assistant) throughout as a pair programmer. I was the **developer and project lead**, responsible for the product decisions, implementation direction, testing, and final review. Claude Code proposed implementation plans and wrote much of the code, tests, and configuration, while I ran everything myself, reviewed and questioned the code, and made the necessary changes.
 
-To trust the result rather than the assistant, every rule has tests, and for each important rule we broke it on purpose to check that a test fails (for example removing `ON CONFLICT DO NOTHING` made 4 import tests fail). We also measured performance with real query plans, and checked the UI with automated screenshots at desktop and phone sizes.
+The product decisions were mine after discussing the options, including how conflicting duplicates are handled, rejecting future dates, the per-episode review and over-delivery rule, and who may use the chat.
+
+To trust the result rather than relying solely on the assistant, every rule has tests, and for each important rule we deliberately broke the implementation to verify that the tests failed as expected. For example, removing `ON CONFLICT DO NOTHING` caused four import tests to fail. We also measured performance using real query plans and checked the UI with automated screenshots at both desktop and phone sizes.
+
 
 ---
 
